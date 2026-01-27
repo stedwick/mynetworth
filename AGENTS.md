@@ -46,14 +46,14 @@
 - Use Zod for runtime type validation.
 - Use Base UI for styling.
 - Use Icons8 for icons.
-- Use Kysely for database queries.
+- Use Neon for the database and auth (BetterAuth).
 - UI should be mobile-first and responsive.
 
 ## Agent-Specific Instructions
 
 - Use Bun for package management and runtime.
-- Use Context7 MCP to get docs when you need them.
-- Use mynetworth-dbhub MCP to query the database.
+- !IMPORTANT! Use Context7 MCP to get docs when you need them.
+  - Do NOT use web.run to fetch docs.
 - Make the smallest change that solves the task; avoid broad refactors.
 - Don’t run the app server or database migrations from automation; keep failures loud rather than blanket `try/catch`.
 - After major changes, update the README.md for humans and AGENTS.md for LLMs. If either is longer than 100 lines, condense.
