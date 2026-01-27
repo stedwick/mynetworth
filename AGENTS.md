@@ -3,6 +3,11 @@
 ## Project Structure & Module Organization
 
 - `app/`: Next.js App Router routes (e.g. `app/page.tsx`, `app/layout.tsx`) and global styles (`app/globals.css`).
+- `app/api/auth/[...path]/route.ts`: Neon Auth API handler.
+- `app/auth/[path]` and `app/account/[path]`: Neon Auth UI routes.
+- `lib/auth/`: Neon Auth helpers (`client.ts`, `server.ts`).
+- `app/lib/`: Server-only app utilities (e.g. `db.ts`, `comments.ts`).
+- `proxy.ts`: Neon Auth middleware config (route protection).
 - `public/`: Static assets served from `/` (images, icons, etc.).
 - Config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `postcss.config.mjs` (Tailwind via PostCSS).
 - Build output: `.next/` (generated, ignored by git).
@@ -14,7 +19,7 @@
 - Production build: `bun run build`.
 - Run production server: `bun start`.
 - Lint: `bun run lint` (ESLint with `eslint-config-next`).
-- Tests: no test runner is configured yet; add a `test` script when introducing unit tests.
+- Tests: `bun test`.
 
 ## Coding Style & Naming Conventions
 
@@ -26,7 +31,7 @@
 ## Testing Guidelines
 
 - For each logical piece of business logic, write one pure function and one unit test (keep logic out of React components).
-- Suggested naming (once added): `*.test.ts` / `*.test.tsx` near the code or under `__tests__/`.
+- Suggested naming: `*.test.ts` / `*.test.tsx` near the code or under `__tests__/`.
 
 ## Commit & Pull Request Guidelines
 
