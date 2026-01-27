@@ -88,8 +88,25 @@ body {
   }
 
   .app-button-danger {
+    background: #f2a3a3;
+    color: #1f1f1f;
+    border-color: #2a2a2a;
+  }
+
+  :root.dark .app-button-danger {
     background: var(--neon-destructive);
-    color: #ffffff;
+    color: #0a0a0a;
     border-color: color-mix(in srgb, var(--neon-destructive) 70%, black 30%);
+  }
+
+  .app-button-danger:hover {
+    background: #e25b5b;
+    color: #ffffff;
+  }
+
+  :root.dark .app-button-danger:hover {
+    background: #f26a6a;
+    color: #ffffff;
+    border-color: #b63b3b;
   }
 }
