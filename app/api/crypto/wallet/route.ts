@@ -1,16 +1,41 @@
 import { unstable_cache } from "next/cache";
 import {
+  convertSatoshisToUsd,
   extractWalletBalanceUsd,
+  isBtcAddress,
   isSupportedWalletAddress,
-  isBtcWalletsEnabled,
   mapWalletBalanceToResponse,
+  parseBtcUtxos,
   parseAddressParam,
   parseMobulaWalletPortfolio,
+  sumBtcUtxoSatoshis,
 } from "./utils";
+import { getMobulaAssets } from "../price/service";
+import { mapMobulaAssetsToPrices } from "../price/utils";
 
 export const runtime = "nodejs";
 
 const MOBULA_WALLET_PORTFOLIO_URL = "https://api.mobula.io/api/1/wallet/portfolio";
+const BTCSCAN_API_URL = "https://btcscan.org/api";
+
+const getBtcUtxos = unstable_cache(
+  async (address: string) => {
+    const utxoUrl = `${BTCSCAN_API_URL}/address/${encodeURIComponent(address)}/utxo`;
+    console.info("[crypto/wallet] Fetching BTC UTXOs for:", address);
+
+    const utxoResponse = await fetch(utxoUrl, {
+      cache: "no-store",
+    });
+
+    if (!utxoResponse.ok) {
+      throw new Error("BTC UTXO request failed");
+    }
+
+    return parseBtcUtxos(await utxoResponse.json());
+  },
+  ["btc-utxos"],
+  { revalidate: 3600 },
+);
 
 const getMobulaWalletBalance = unstable_cache(
   async (address: string) => {
@@ -58,7 +83,6 @@ export async function GET(request: Request): Promise<Response> {
 
   const { searchParams } = new URL(request.url);
   const addressParam = parseAddressParam(searchParams.get("address"));
-  const allowBtc = isBtcWalletsEnabled(process.env.ALLOW_BTC_WALLETS);
 
   if (!addressParam) {
     return Response.json(
@@ -67,18 +91,37 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  if (!isSupportedWalletAddress(addressParam, { allowBtc })) {
+  if (!isSupportedWalletAddress(addressParam)) {
     return Response.json(
       {
-        error: allowBtc
-          ? "Provide a valid EVM, SOL, or BTC address via ?address=..."
-          : "Provide a valid EVM or SOL address via ?address=...",
+        error: "Provide a valid EVM, SOL, or BTC address via ?address=...",
       },
       { status: 400 },
     );
   }
 
   try {
+    if (isBtcAddress(addressParam)) {
+      const utxos = await getBtcUtxos(addressParam);
+      const satoshis = sumBtcUtxoSatoshis(utxos);
+      const btcData = await getMobulaAssets(["BTC"], apiKey);
+      const prices = mapMobulaAssetsToPrices(btcData.dataArray ?? []);
+      const btcUsdPrice = prices.BTC;
+
+      if (typeof btcUsdPrice !== "number") {
+        throw new Error("BTC price missing");
+      }
+
+      const usdBalance = convertSatoshisToUsd(satoshis, btcUsdPrice);
+      const responseBody = mapWalletBalanceToResponse(addressParam, usdBalance);
+
+      return Response.json(responseBody, {
+        headers: {
+          "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
+        },
+      });
+    }
+
     const totalBalanceUsd = await getMobulaWalletBalance(addressParam);
     const responseBody = mapWalletBalanceToResponse(addressParam, totalBalanceUsd);
 

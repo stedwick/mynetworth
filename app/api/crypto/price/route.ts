@@ -1,35 +1,7 @@
-import { unstable_cache } from "next/cache";
-import {
-  mapMobulaAssetsToPrices,
-  parseMobulaMultiData,
-  parseSymbolsParam,
-} from "./utils";
+import { getMobulaAssets } from "./service";
+import { mapMobulaAssetsToPrices, parseSymbolsParam } from "./utils";
 
 export const runtime = "nodejs";
-
-const MOBULA_MULTI_DATA_URL = "https://api.mobula.io/api/1/market/multi-data";
-
-const getMobulaAssets = unstable_cache(
-  async (symbols: string[], apiKey: string) => {
-    const url = `${MOBULA_MULTI_DATA_URL}?symbols=${encodeURIComponent(symbols.join(","))}`;
-    console.info("[crypto/price] Fetching Mobula prices for:", symbols.join(","));
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: apiKey,
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error("Mobula request failed");
-    }
-
-    return parseMobulaMultiData(await response.json());
-  },
-  ["crypto-price"],
-  { revalidate: 3600 },
-);
 
 export async function GET(request: Request): Promise<Response> {
   const apiKey = process.env.MOBULA_API_KEY;

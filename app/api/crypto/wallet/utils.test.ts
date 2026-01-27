@@ -1,14 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import {
+  convertSatoshisToUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
-  isBtcWalletsEnabled,
   isEthAddress,
   isSolAddress,
   isSupportedWalletAddress,
   mapWalletBalanceToResponse,
+  parseBtcUtxos,
   parseAddressParam,
   parseMobulaWalletPortfolio,
+  sumBtcUtxoSatoshis,
 } from "./utils";
 
 describe("parseAddressParam", () => {
@@ -53,35 +55,24 @@ describe("isSolAddress", () => {
 });
 
 describe("isSupportedWalletAddress", () => {
-  it("accepts ETH or SOL addresses by default", () => {
+  it("accepts ETH, SOL, or BTC addresses", () => {
     expect(isSupportedWalletAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(true);
     expect(isSupportedWalletAddress("So11111111111111111111111111111111111111112")).toBe(true);
-    expect(isSupportedWalletAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(false);
+    expect(isSupportedWalletAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(true);
   });
 
   it("rejects unknown address formats", () => {
     expect(isSupportedWalletAddress("not-an-address")).toBe(false);
   });
-
-  it("accepts BTC addresses when enabled", () => {
-    expect(
-      isSupportedWalletAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4", { allowBtc: true }),
-    ).toBe(true);
-  });
 });
 
-describe("isBtcWalletsEnabled", () => {
-  it("accepts common truthy values", () => {
-    expect(isBtcWalletsEnabled("true")).toBe(true);
-    expect(isBtcWalletsEnabled("1")).toBe(true);
-    expect(isBtcWalletsEnabled("yes")).toBe(true);
-    expect(isBtcWalletsEnabled("on")).toBe(true);
-  });
+describe("parseBtcUtxos", () => {
+  it("accepts a list of BTC UTXOs", () => {
+    const result = parseBtcUtxos([
+      { txid: "abc", vout: 0, value: 1200, status: { confirmed: true } },
+    ]);
 
-  it("rejects falsey values", () => {
-    expect(isBtcWalletsEnabled("false")).toBe(false);
-    expect(isBtcWalletsEnabled("0")).toBe(false);
-    expect(isBtcWalletsEnabled(undefined)).toBe(false);
+    expect(result).toHaveLength(1);
   });
 });
 
@@ -109,7 +100,7 @@ describe("extractWalletBalanceUsd", () => {
     expect(balance).toBe(12.34);
   });
 
-  it("falls back to balance_usd when total_balance_usd is missing", () => {
+  it("falls back to balance_usd when total_wallet_balance is missing", () => {
     const balance = extractWalletBalanceUsd({
       data: {
         balance_usd: 56.78,
@@ -121,6 +112,25 @@ describe("extractWalletBalanceUsd", () => {
 
   it("throws when no balance field is present", () => {
     expect(() => extractWalletBalanceUsd({ data: {} })).toThrow();
+  });
+});
+
+describe("sumBtcUtxoSatoshis", () => {
+  it("sums satoshi values and skips invalid entries", () => {
+    const result = sumBtcUtxoSatoshis([
+      { value: 1000 },
+      { value: 2500 },
+      { value: Number.NaN },
+      {},
+    ]);
+
+    expect(result).toBe(3500);
+  });
+});
+
+describe("convertSatoshisToUsd", () => {
+  it("converts satoshis to USD using the BTC price", () => {
+    expect(convertSatoshisToUsd(100_000_000, 50_000)).toBe(50_000);
   });
 });
 

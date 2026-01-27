@@ -40,12 +40,24 @@ const btcAddressSchema = z
   .regex(/^(1|3)[A-HJ-NP-Za-km-z1-9]{25,39}$/)
   .or(z.string().regex(/^bc1[ac-hj-np-z02-9]{11,71}$/i));
 const solAddressSchema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
-const evmOrSolAddressSchema = z.union([ethAddressSchema, solAddressSchema]);
 const supportedWalletAddressSchema = z.union([
   ethAddressSchema,
   solAddressSchema,
   btcAddressSchema,
 ]);
+
+const btcUtxoSchema = z
+  .object({
+    value: z.number().optional(),
+    status: z
+      .object({
+        confirmed: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+const btcUtxoArraySchema = z.array(btcUtxoSchema);
 
 export const isEthAddress = (address: string): boolean => {
   return ethAddressSchema.safeParse(address).success;
@@ -59,18 +71,30 @@ export const isSolAddress = (address: string): boolean => {
   return solAddressSchema.safeParse(address).success;
 };
 
-export const isBtcWalletsEnabled = (envValue?: string): boolean => {
-  if (!envValue) return false;
-  const normalized = envValue.trim().toLowerCase();
-  return normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on";
+export const isSupportedWalletAddress = (address: string): boolean => {
+  return supportedWalletAddressSchema.safeParse(address).success;
 };
 
-export const isSupportedWalletAddress = (
-  address: string,
-  options: { allowBtc?: boolean } = {},
-): boolean => {
-  return (options.allowBtc ? supportedWalletAddressSchema : evmOrSolAddressSchema).safeParse(address)
-    .success;
+export type BtcUtxo = z.infer<typeof btcUtxoSchema>;
+
+export const parseBtcUtxos = (data: unknown): BtcUtxo[] => {
+  return btcUtxoArraySchema.parse(data);
+};
+
+export const sumBtcUtxoSatoshis = (utxos: BtcUtxo[]): number => {
+  let total = 0;
+
+  for (const utxo of utxos) {
+    if (typeof utxo.value === "number" && Number.isFinite(utxo.value)) {
+      total += utxo.value;
+    }
+  }
+
+  return total;
+};
+
+export const convertSatoshisToUsd = (satoshis: number, btcUsdPrice: number): number => {
+  return (satoshis / 1e8) * btcUsdPrice;
 };
 
 export const mapWalletBalanceToResponse = (
