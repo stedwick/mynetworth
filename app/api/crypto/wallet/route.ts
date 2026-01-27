@@ -45,7 +45,7 @@ const getMobulaWalletBalance = unstable_cache(
       throw new Error("Missing MOBULA_API_KEY");
     }
 
-    const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}&cache=true&stale=3600`;
+    const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}&cache=true&stale=3600&unlistedAssets=false`;
     console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
 
     const response = await fetch(url, {
