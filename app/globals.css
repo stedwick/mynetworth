@@ -25,3 +25,71 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer base {
+  .neon-auth-ui button,
+  .neon-auth-ui [role="button"],
+  .neon-auth-ui input[type="submit"],
+  .neon-auth-ui input[type="button"] {
+    cursor: pointer;
+  }
+
+  .neon-auth-ui button:disabled,
+  .neon-auth-ui [role="button"][aria-disabled="true"],
+  .neon-auth-ui input[type="submit"]:disabled,
+  .neon-auth-ui input[type="button"]:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)] dark:bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)];
+  }
+
+  .app-shell-inner {
+    @apply mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 md:flex-row lg:px-8;
+  }
+
+  .app-sidebar {
+    @apply flex max-h-[calc(100vh-3rem)] flex-col rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm dark:border-white/10 dark:bg-white/5;
+  }
+
+  .app-sidebar-label {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-white/60;
+  }
+
+  .app-sidebar-nav {
+    @apply mt-4 flex flex-1 flex-col gap-1 overflow-y-auto pr-1;
+  }
+
+  .app-sidebar-link {
+    @apply flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white;
+  }
+
+  .app-sidebar-link-active {
+    @apply bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-white;
+  }
+
+  .app-surface {
+    @apply min-w-0 flex-1 rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm sm:p-6 dark:border-white/10 dark:bg-white/5;
+  }
+
+  .app-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition;
+    background: var(--neon-secondary);
+    color: var(--neon-secondary-foreground);
+    border-color: var(--neon-border);
+    cursor: pointer;
+  }
+
+  .app-button:hover {
+    filter: brightness(0.98);
+  }
+
+  .app-button-danger {
+    background: var(--neon-destructive);
+    color: #ffffff;
+    border-color: color-mix(in srgb, var(--neon-destructive) 70%, black 30%);
+  }
+}
