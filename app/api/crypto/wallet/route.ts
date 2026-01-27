@@ -2,14 +2,15 @@ import { unstable_cache } from "next/cache";
 import {
   extractWalletBalanceUsd,
   isSupportedWalletAddress,
+  isBtcWalletsEnabled,
   mapWalletBalanceToResponse,
   parseAddressParam,
-  parseMobulaWalletHistory,
+  parseMobulaWalletPortfolio,
 } from "./utils";
 
 export const runtime = "nodejs";
 
-const MOBULA_WALLET_HISTORY_URL = "https://api.mobula.io/api/1/wallet/history";
+const MOBULA_WALLET_PORTFOLIO_URL = "https://api.mobula.io/api/1/wallet/portfolio";
 
 const getMobulaWalletBalance = unstable_cache(
   async (address: string) => {
@@ -19,8 +20,8 @@ const getMobulaWalletBalance = unstable_cache(
       throw new Error("Missing MOBULA_API_KEY");
     }
 
-    const url = `${MOBULA_WALLET_HISTORY_URL}?wallet=${encodeURIComponent(address)}`;
-    console.info("[crypto/wallet] Fetching Mobula balance for:", address);
+    const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}&cache=true&stale=3600`;
+    console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
 
     const response = await fetch(url, {
       headers: {
@@ -33,7 +34,7 @@ const getMobulaWalletBalance = unstable_cache(
       throw new Error("Mobula request failed");
     }
 
-    const data = parseMobulaWalletHistory(await response.json());
+    const data = parseMobulaWalletPortfolio(await response.json());
     return extractWalletBalanceUsd(data);
   },
   ["crypto-wallet-balance"],
@@ -57,6 +58,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const { searchParams } = new URL(request.url);
   const addressParam = parseAddressParam(searchParams.get("address"));
+  const allowBtc = isBtcWalletsEnabled(process.env.ALLOW_BTC_WALLETS);
 
   if (!addressParam) {
     return Response.json(
@@ -65,9 +67,13 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  if (!isSupportedWalletAddress(addressParam)) {
+  if (!isSupportedWalletAddress(addressParam, { allowBtc })) {
     return Response.json(
-      { error: "Provide a valid BTC, ETH, or SOL address via ?address=..." },
+      {
+        error: allowBtc
+          ? "Provide a valid EVM, SOL, or BTC address via ?address=..."
+          : "Provide a valid EVM or SOL address via ?address=...",
+      },
       { status: 400 },
     );
   }
