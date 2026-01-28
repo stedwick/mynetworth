@@ -53,6 +53,7 @@
 - Use Icons8 for icons.
 - Use Neon for the database and auth (BetterAuth).
 - UI should be mobile-first and responsive.
+- Prefer component competition over prop drilling.
 
 ## Agent-Specific Instructions
 

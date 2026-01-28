@@ -28,7 +28,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NeonAuthProvider>{children}</NeonAuthProvider>
+        <div className="root">
+          <NeonAuthProvider>{children}</NeonAuthProvider>
+        </div>
       </body>
     </html>
   );

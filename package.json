@@ -10,6 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@base-ui/react": "^1.1.0",
     "@neondatabase/auth": "^0.1.0-beta.21",
     "@neondatabase/serverless": "^1.0.2",
     "next": "16.1.4",
