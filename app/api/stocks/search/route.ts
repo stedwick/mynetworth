@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife } from "next/cache";
 import {
   mapYahooSearchQuotesToMatches,
   orderYahooSearchMatches,
@@ -11,26 +11,25 @@ export const dynamic = "force-dynamic";
 
 const YAHOO_SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
 
-const getCachedYahooSearchResults = unstable_cache(
-  async (query: string) => {
-    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
-    const response = await fetch(url, {
-      cache: "no-store",
-    });
+const getCachedYahooSearchResults = async (query: string) => {
+  "use cache";
+  cacheLife("days");
 
-    if (!response.ok) {
-      throw new Error("Yahoo search request failed");
-    }
+  const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
+  const response = await fetch(url, {
+    cache: "no-store",
+  });
 
-    const data = parseYahooSearchResponse(await response.json());
-    return orderYahooSearchMatches(
-      mapYahooSearchQuotesToMatches(data.quotes ?? []),
-      query,
-    );
-  },
-  ["stocks-search"],
-  { revalidate: 86400 },
-);
+  if (!response.ok) {
+    throw new Error("Yahoo search request failed");
+  }
+
+  const data = parseYahooSearchResponse(await response.json());
+  return orderYahooSearchMatches(
+    mapYahooSearchQuotesToMatches(data.quotes ?? []),
+    query,
+  );
+};
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);

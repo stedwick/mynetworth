@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife } from "next/cache";
 
 import { getMobulaAssets } from "../price/service";
 import { mapMobulaAssetsToPrices } from "../price/utils";
@@ -15,47 +15,45 @@ const MOBULA_WALLET_PORTFOLIO_URL =
   "https://api.mobula.io/api/1/wallet/portfolio";
 const BTCSCAN_API_URL = "https://btcscan.org/api";
 
-const getBtcUtxos = unstable_cache(
-  async (address: string) => {
-    const utxoUrl = `${BTCSCAN_API_URL}/address/${encodeURIComponent(address)}/utxo`;
-    console.info("[crypto/wallet] Fetching BTC UTXOs for:", address);
+const getBtcUtxos = async (address: string) => {
+  "use cache";
+  cacheLife("hours");
 
-    const utxoResponse = await fetch(utxoUrl, {
-      cache: "no-store",
-    });
+  const utxoUrl = `${BTCSCAN_API_URL}/address/${encodeURIComponent(address)}/utxo`;
+  console.info("[crypto/wallet] Fetching BTC UTXOs for:", address);
 
-    if (!utxoResponse.ok) {
-      throw new Error("BTC UTXO request failed");
-    }
+  const utxoResponse = await fetch(utxoUrl, {
+    cache: "no-store",
+  });
 
-    return parseBtcUtxos(await utxoResponse.json());
-  },
-  ["btc-utxos"],
-  { revalidate: 3600 },
-);
+  if (!utxoResponse.ok) {
+    throw new Error("BTC UTXO request failed");
+  }
 
-const getMobulaWalletBalance = unstable_cache(
-  async (address: string, apiKey: string) => {
-    const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}&cache=true&stale=3600&unlistedAssets=false`;
-    console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
+  return parseBtcUtxos(await utxoResponse.json());
+};
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: apiKey,
-      },
-      cache: "no-store",
-    });
+const getMobulaWalletBalance = async (address: string, apiKey: string) => {
+  "use cache";
+  cacheLife("hours");
 
-    if (!response.ok) {
-      throw new Error("Mobula request failed");
-    }
+  const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}&cache=true&stale=3600&unlistedAssets=false`;
+  console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
 
-    const data = parseMobulaWalletPortfolio(await response.json());
-    return extractWalletBalanceUsd(data);
-  },
-  ["crypto-wallet-balance"],
-  { revalidate: 3600 },
-);
+  const response = await fetch(url, {
+    headers: {
+      Authorization: apiKey,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Mobula request failed");
+  }
+
+  const data = parseMobulaWalletPortfolio(await response.json());
+  return extractWalletBalanceUsd(data);
+};
 
 export const getWalletBalanceUsd = async (
   address: string,

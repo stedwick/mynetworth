@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife } from "next/cache";
 import YahooFinance from "yahoo-finance2";
 import {
   mapYahooQuotesToPrices,
@@ -9,18 +9,14 @@ import {
 export const runtime = "nodejs";
 
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
-const getYahooQuotes = unstable_cache(
-  async (symbols: string[]) => {
-    console.info(
-      "[stocks/price] Fetching Yahoo quotes for:",
-      symbols.join(","),
-    );
-    const result = await yahooFinance.quote(symbols, { return: "array" });
-    return parseYahooQuotes(result);
-  },
-  ["stocks-price"],
-  { revalidate: 3600 },
-);
+const getYahooQuotes = async (symbols: string[]) => {
+  "use cache";
+  cacheLife("hours");
+
+  console.info("[stocks/price] Fetching Yahoo quotes for:", symbols.join(","));
+  const result = await yahooFinance.quote(symbols, { return: "array" });
+  return parseYahooQuotes(result);
+};
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);

@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife } from "next/cache";
 import { getMobulaListedSymbols } from "../price/service";
 import {
   filterMobulaSymbols,
@@ -9,17 +9,15 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const getCachedSearchResults = unstable_cache(
-  async (query: string, apiKey: string) => {
-    const symbols = await getMobulaListedSymbols(apiKey);
-    return orderMobulaMatches(
-      filterMobulaSymbols(symbols, query, 20),
-      query,
-    ).map(({ symbol, name }) => ({ symbol, name }));
-  },
-  ["crypto-search"],
-  { revalidate: 86400 },
-);
+const getCachedSearchResults = async (query: string, apiKey: string) => {
+  "use cache";
+  cacheLife("days");
+
+  const symbols = await getMobulaListedSymbols(apiKey);
+  return orderMobulaMatches(filterMobulaSymbols(symbols, query, 20), query).map(
+    ({ symbol, name }) => ({ symbol, name }),
+  );
+};
 
 export async function GET(request: Request): Promise<Response> {
   const apiKey = process.env.MOBULA_API_KEY;
