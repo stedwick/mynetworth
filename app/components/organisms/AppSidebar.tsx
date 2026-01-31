@@ -30,7 +30,7 @@ const navItems = [
     id: "update-email",
     label: "Update Email",
     href: "/account/settings",
-    icon: { src: "/icons8/user.png", alt: "Update Email" },
+    icon: { src: "/icons8/email.png", alt: "Update Email" },
   },
   {
     id: "update-password",
@@ -73,7 +73,7 @@ export default function AppSidebar({
                   src={item.icon.src}
                   alt=""
                   aria-hidden="true"
-                  className="app-sidebar-icon"
+                  className="app-sidebar-icon icon-light-dark"
                   width={18}
                   height={18}
                   loading="lazy"

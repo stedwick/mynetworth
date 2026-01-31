@@ -71,6 +71,36 @@ body {
     opacity: 0.85;
   }
 
+  .icon-light-dark {
+    filter: none;
+    opacity: 0.8;
+  }
+
+  :root.dark .icon-light-dark {
+    filter: invert(1);
+    opacity: 0.9;
+  }
+
+  .icon-light-dark-strong {
+    filter: none;
+    opacity: 0.9;
+  }
+
+  :root.dark .icon-light-dark-strong {
+    filter: invert(1);
+    opacity: 1;
+  }
+
+  .icon-on-primary {
+    filter: brightness(0) invert(1);
+    opacity: 0.95;
+  }
+
+  :root.dark .icon-on-primary {
+    filter: brightness(0);
+    opacity: 0.9;
+  }
+
   .app-sidebar-link-active {
     @apply bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-white;
   }
@@ -154,6 +184,10 @@ body {
   }
 
   .demo-hide-edits .asset-edit-button {
+    display: none !important;
+  }
+
+  .demo-hide-edits .asset-add-button {
     display: none !important;
   }
 

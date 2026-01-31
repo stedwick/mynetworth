@@ -26,7 +26,7 @@ export default function AssetRow({ item }: { item: AssetItem }) {
             src={icon.src}
             alt=""
             aria-hidden="true"
-            className="h-5 w-5"
+            className="icon-light-dark-strong h-5 w-5"
             width={20}
             height={20}
             loading="lazy"
@@ -36,7 +36,7 @@ export default function AssetRow({ item }: { item: AssetItem }) {
             <Image
               src="/icons8/minus.png"
               alt="Negative"
-              className="h-4 w-4 opacity-70 dark:invert"
+              className="icon-light-dark h-4 w-4"
               width={16}
               height={16}
               loading="lazy"

@@ -26,7 +26,7 @@ export default function MobileSidebarDialog({
             src="/icons8/menu.png"
             alt=""
             aria-hidden="true"
-            className="h-5 w-5 dark:invert"
+            className="icon-light-dark h-5 w-5"
             width={20}
             height={20}
             loading="lazy"
@@ -49,7 +49,7 @@ export default function MobileSidebarDialog({
                     src="/icons8/close.png"
                     alt=""
                     aria-hidden="true"
-                    className="h-5 w-5 opacity-70 dark:invert dark:opacity-85"
+                    className="icon-light-dark h-5 w-5"
                     width={20}
                     height={20}
                     loading="lazy"

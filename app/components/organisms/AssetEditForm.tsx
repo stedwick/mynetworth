@@ -1,8 +1,10 @@
 "use client";
 
 import type { FormEventHandler } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@base-ui/react/button";
+import { Dialog } from "@base-ui/react/dialog";
 import { Field } from "@base-ui/react/field";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
@@ -50,11 +52,15 @@ export default function AssetEditForm({
   onSubmit,
   submitting,
   submitCount,
+  showDelete = false,
+  onDelete,
 }: {
   control: Control<AssetEditFormValues>;
   onSubmit: FormEventHandler<HTMLFormElement>;
   submitting: boolean;
   submitCount: number;
+  showDelete?: boolean;
+  onDelete?: () => void;
 }) {
   const router = useRouter();
   const selectedKind = useWatch({ control, name: "kind" });
@@ -475,20 +481,102 @@ export default function AssetEditForm({
           </>
         ) : null}
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          type="button"
-          onClick={() => router.back()}
-          className="app-button app-button-cancel w-full sm:w-auto"
-        >
-          Cancel
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              onClick={() => router.back()}
+              className="app-button app-button-cancel w-full sm:w-auto"
+            >
+              <Image
+                src="/icons8/arrow-left.png"
+                alt=""
+                aria-hidden="true"
+                className="icon-light-dark h-4 w-4"
+                width={16}
+                height={16}
+                loading="lazy"
+              />
+              Go back
+            </Button>
+            {showDelete ? (
+              <Dialog.Root>
+                <Dialog.Trigger
+                  className="app-button app-button-danger w-full sm:w-auto"
+                  type="button"
+                >
+                  <Image
+                    src="/icons8/trash.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="icon-light-dark-strong h-4 w-4"
+                    width={16}
+                    height={16}
+                    loading="lazy"
+                  />
+                  Delete asset
+                </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Backdrop className="fixed inset-0 z-40 bg-slate-950/45 transition-opacity duration-200 data-starting-style:opacity-0 data-ending-style:opacity-0" />
+                <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(26rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200/70 bg-white/95 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/95">
+                  <div className="space-y-3">
+                    <Dialog.Title className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Delete asset?
+                    </Dialog.Title>
+                    <Dialog.Description className="text-sm text-slate-600 dark:text-white/70">
+                      This action cannot be undone. The asset will be removed
+                      from your portfolio.
+                    </Dialog.Description>
+                  </div>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <Dialog.Close className="app-button app-button-cancel w-full sm:w-auto">
+                      <Image
+                        src="/icons8/check.png"
+                        alt=""
+                        aria-hidden="true"
+                        className="icon-light-dark h-4 w-4"
+                        width={16}
+                        height={16}
+                        loading="lazy"
+                      />
+                      Keep asset
+                    </Dialog.Close>
+                    <Dialog.Close
+                      className="app-button app-button-danger w-full sm:w-auto"
+                      onClick={() => onDelete?.()}
+                    >
+                      <Image
+                        src="/icons8/trash.png"
+                        alt=""
+                        aria-hidden="true"
+                        className="icon-light-dark-strong h-4 w-4"
+                        width={16}
+                        height={16}
+                        loading="lazy"
+                      />
+                      Delete asset
+                    </Dialog.Close>
+                  </div>
+                </Dialog.Popup>
+              </Dialog.Portal>
+            </Dialog.Root>
+          ) : null}
+        </div>
         <Button
           type="submit"
           className="app-button app-button-primary w-full sm:w-auto"
           disabled={submitting}
         >
-          Save changes
+          <Image
+            src="/icons8/check.png"
+            alt=""
+            aria-hidden="true"
+            className="icon-on-primary h-4 w-4"
+            width={16}
+            height={16}
+            loading="lazy"
+          />
+          Save asset
         </Button>
       </div>
     </form>

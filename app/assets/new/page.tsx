@@ -9,7 +9,7 @@ import {
   type AssetEditFormValues,
 } from "@/app/lib/asset-form";
 
-export default function AssetEditPage() {
+export default function NewAssetPage() {
   const { control, handleSubmit, formState } = useForm<AssetEditFormValues>({
     defaultValues: assetEditDefaultValues,
     mode: "onBlur",
@@ -19,15 +19,14 @@ export default function AssetEditPage() {
 
   return (
     <AssetEditPageTemplate
-      title="Edit asset"
-      description="Update asset details and keep your net worth snapshots accurate."
+      title="New asset"
+      description="Add a new asset to your portfolio."
       form={
         <AssetEditForm
           control={control}
           onSubmit={onSubmit}
           submitting={formState.isSubmitting}
           submitCount={formState.submitCount}
-          showDelete
         />
       }
     />

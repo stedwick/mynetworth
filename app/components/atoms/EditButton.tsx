@@ -26,7 +26,7 @@ export default function EditButton({
         src="/icons8/edit.png"
         alt=""
         aria-hidden="true"
-        className="h-4 w-4 opacity-80 dark:invert"
+        className="icon-light-dark h-4 w-4"
         width={16}
         height={16}
         loading="lazy"

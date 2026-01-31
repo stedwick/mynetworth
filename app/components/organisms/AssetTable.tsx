@@ -1,4 +1,7 @@
 import { Fragment } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@base-ui/react/button";
 
 import type { AssetCategory } from "@/app/lib/networth";
 import AssetCategorySection from "@/app/components/molecules/AssetCategorySection";
@@ -53,6 +56,24 @@ export default function AssetTable({
             </tbody>
           </table>
         </ScrollableTableContainer>
+      </div>
+      <div className="flex justify-end">
+        <Button
+          render={<Link href="/assets/new" />}
+          nativeButton={false}
+          className="asset-add-button app-button app-button-primary"
+        >
+          <Image
+            src="/icons8/plus.png"
+            alt=""
+            aria-hidden="true"
+            className="icon-on-primary h-4 w-4"
+            width={16}
+            height={16}
+            loading="lazy"
+          />
+          Add Asset
+        </Button>
       </div>
     </section>
   );
