@@ -1,8 +1,6 @@
 import { getMobulaAssets } from "./service";
 import { mapMobulaAssetsToPrices, parseSymbolsParam } from "./utils";
 
-export const runtime = "nodejs";
-
 export async function GET(request: Request): Promise<Response> {
   const apiKey = process.env.MOBULA_API_KEY;
 

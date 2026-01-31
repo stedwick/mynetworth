@@ -6,9 +6,6 @@ import {
   parseYahooSearchResponse,
 } from "./utils";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 const YAHOO_SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
 
 const getCachedYahooSearchResults = async (query: string) => {

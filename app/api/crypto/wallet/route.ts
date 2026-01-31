@@ -5,8 +5,6 @@ import {
 } from "./utils";
 import { getWalletBalanceUsd } from "./service";
 
-export const runtime = "nodejs";
-
 export async function GET(request: Request): Promise<Response> {
   const apiKey = process.env.MOBULA_API_KEY;
 

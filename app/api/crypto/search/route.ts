@@ -6,9 +6,6 @@ import {
   parseSearchQueryParam,
 } from "./utils";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 const getCachedSearchResults = async (query: string, apiKey: string) => {
   "use cache";
   cacheLife("days");

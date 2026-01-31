@@ -6,8 +6,6 @@ import {
   parseYahooQuotes,
 } from "./utils";
 
-export const runtime = "nodejs";
-
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 const getYahooQuotes = async (symbols: string[]) => {
   "use cache";
