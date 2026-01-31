@@ -7,10 +7,8 @@ import AssetTable from "@/app/components/organisms/AssetTable";
 
 export default function MePageTemplate({
   categories,
-  showEditActions = true,
 }: {
   categories: AssetCategory[];
-  showEditActions?: boolean;
 }) {
   const { netWorth } = computeNetWorthSummary(categories);
 
@@ -28,7 +26,7 @@ export default function MePageTemplate({
         </p>
       </section>
 
-      <AssetTable categories={categories} showEditActions={showEditActions} />
+      <AssetTable categories={categories} />
     </div>
   );
 }

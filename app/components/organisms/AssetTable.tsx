@@ -6,10 +6,8 @@ import ScrollableTableContainer from "@/app/components/organisms/ScrollableTable
 
 export default function AssetTable({
   categories,
-  showEditActions = true,
 }: {
   categories: AssetCategory[];
-  showEditActions?: boolean;
 }) {
   return (
     <section className="space-y-4">
@@ -27,11 +25,9 @@ export default function AssetTable({
             <thead className="border-b border-slate-200/70 bg-slate-50/80 text-xs uppercase tracking-[0.2em] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50">
               <tr>
                 <th className="w-28 px-4 py-3 font-semibold">Ticker</th>
-                {showEditActions ? (
-                  <th className="w-10 px-2 py-3 text-center font-semibold">
-                    <span className="sr-only">Edit</span>
-                  </th>
-                ) : null}
+                <th className="w-10 px-2 py-3 text-center font-semibold">
+                  <span className="sr-only">Edit</span>
+                </th>
                 <th className="w-44 px-4 py-3 font-semibold">Name</th>
                 <th className="w-28 px-4 py-3 font-semibold">Price</th>
                 <th className="w-16 px-4 py-3 font-semibold">Qty</th>
@@ -48,16 +44,10 @@ export default function AssetTable({
                       aria-hidden="true"
                       className="border-t border-slate-200/70 dark:border-white/10"
                     >
-                      <td
-                        colSpan={showEditActions ? 6 : 5}
-                        className="h-4 bg-transparent"
-                      />
+                      <td colSpan={6} className="h-4 bg-transparent" />
                     </tr>
                   ) : null}
-                  <AssetCategorySection
-                    category={category}
-                    showEditActions={showEditActions}
-                  />
+                  <AssetCategorySection category={category} />
                 </Fragment>
               ))}
             </tbody>

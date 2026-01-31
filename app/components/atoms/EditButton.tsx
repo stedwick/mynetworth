@@ -10,7 +10,7 @@ export default function EditButton({
   href?: string;
 }) {
   const className =
-    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200/70 text-slate-500 opacity-0 transition hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100 focus-visible:opacity-100 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white";
+    "asset-edit-button inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200/70 text-slate-500 opacity-0 transition hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100 focus-visible:opacity-100 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white";
   const render = href ? <Link href={href} /> : undefined;
 
   return (

@@ -10,10 +10,8 @@ import { getTotalColorClass } from "@/app/components/organisms/assetTableUtils";
 
 export default function AssetCategorySection({
   category,
-  showEditActions = true,
 }: {
   category: AssetCategory;
-  showEditActions?: boolean;
 }) {
   const total = category.items.reduce(
     (sum, item) => sum + getAssetTotal(item),
@@ -26,11 +24,9 @@ export default function AssetCategorySection({
         <th className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-white/60">
           {category.label}
         </th>
-        {showEditActions ? (
-          <th className="w-10 px-2 py-2 text-center align-middle">
-            <EditButton label={`Edit ${category.label}`} />
-          </th>
-        ) : null}
+        <th className="w-10 px-2 py-2 text-center align-middle">
+          <EditButton label={`Edit ${category.label}`} />
+        </th>
         <th
           colSpan={4}
           className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-white/60"
@@ -48,10 +44,10 @@ export default function AssetCategorySection({
         </th>
       </tr>
       {category.items.map((item) => (
-        <AssetRow key={item.id} item={item} showEditActions={showEditActions} />
+        <AssetRow key={item.id} item={item} />
       ))}
       <tr className="bg-slate-50/80 dark:bg-white/5">
-        <td colSpan={showEditActions ? 5 : 4} className="px-4 py-3">
+        <td colSpan={5} className="px-4 py-3">
           <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700 dark:text-white/70">
             <span>{category.label} total</span>
           </div>

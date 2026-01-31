@@ -140,5 +140,9 @@ export const mockCategories: AssetCategory[] = [
 ];
 
 export default function DemoPage() {
-  return <MePageTemplate categories={mockCategories} showEditActions={false} />;
+  return (
+    <div className="demo-hide-edits">
+      <MePageTemplate categories={mockCategories} />
+    </div>
+  );
 }
