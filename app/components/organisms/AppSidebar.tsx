@@ -39,9 +39,14 @@ const navItems = [
   },
 ];
 
-export default function AppSidebar() {
+export default function AppSidebar({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname() ?? "";
   const logoutHref = `/auth/${authViewPaths.SIGN_OUT}`;
+  const handleNavigate = () => onNavigate?.();
 
   return (
     <div className="flex min-h-full flex-col">
@@ -53,6 +58,7 @@ export default function AppSidebar() {
             <Link
               key={item.id}
               href={item.href}
+              onClick={handleNavigate}
               aria-current={isActive ? "page" : undefined}
               className={`app-sidebar-link ${
                 isActive ? "app-sidebar-link-active" : ""
@@ -82,6 +88,7 @@ export default function AppSidebar() {
       <div className="mt-auto pt-6">
         <Link
           href={logoutHref}
+          onClick={handleNavigate}
           className="app-button app-button-danger w-full justify-center"
         >
           Log out

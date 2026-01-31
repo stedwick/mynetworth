@@ -7,13 +7,17 @@ import Image from "next/image";
 export default function MobileSidebarDialog({
   title,
   children,
+  open,
+  onOpenChange,
 }: {
   title: string;
   children: ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   return (
     <div className="w-full md:hidden">
-      <Dialog.Root>
+      <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Trigger
           className="flex w-full items-center justify-start gap-3 rounded-none bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white/70"
           aria-label={`${title} menu`}
