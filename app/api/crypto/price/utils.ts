@@ -5,16 +5,33 @@ type MobulaAsset = {
   price?: number | null;
 };
 
+type MobulaAllAsset = {
+  symbol: string;
+  name?: string;
+  market_cap?: number | null;
+};
+
 const mobulaAssetSchema = z.looseObject({
   symbol: z.string(),
   price: z.number().nullable().optional(),
+});
+
+const mobulaAllAssetSchema = z.looseObject({
+  symbol: z.string(),
+  name: z.string().optional(),
+  market_cap: z.number().nullable().optional(),
 });
 
 const mobulaMultiDataSchema = z.object({
   dataArray: z.array(z.union([mobulaAssetSchema, z.null()])).optional(),
 });
 
+export const mobulaAllDataSchema = z.object({
+  data: z.array(mobulaAllAssetSchema),
+});
+
 export type MobulaMultiData = z.infer<typeof mobulaMultiDataSchema>;
+export type MobulaAllData = z.infer<typeof mobulaAllDataSchema>;
 
 export const parseMobulaMultiData = (data: unknown): MobulaMultiData => {
   return mobulaMultiDataSchema.parse(data);
@@ -52,4 +69,43 @@ export const mapMobulaAssetsToPrices = (
   }
 
   return prices;
+};
+
+export type MobulaSymbolMatch = {
+  symbol: string;
+  name?: string;
+  marketCap?: number;
+};
+
+export const mapMobulaAllAssetsToSymbols = (
+  assets: Array<MobulaAllAsset | null | undefined>,
+): MobulaSymbolMatch[] => {
+  const symbolsByKey = new Map<string, MobulaSymbolMatch>();
+
+  for (const asset of assets) {
+    const rawSymbol = asset?.symbol?.trim();
+    if (!rawSymbol) continue;
+
+    const symbol = rawSymbol.toUpperCase();
+    const marketCap =
+      typeof asset?.market_cap === "number" && Number.isFinite(asset.market_cap)
+        ? asset.market_cap
+        : undefined;
+
+    const current = symbolsByKey.get(symbol);
+    if (
+      !current ||
+      (typeof marketCap === "number" &&
+        (typeof current.marketCap !== "number" ||
+          marketCap > current.marketCap))
+    ) {
+      symbolsByKey.set(symbol, {
+        symbol,
+        name: asset?.name?.trim() || undefined,
+        marketCap,
+      });
+    }
+  }
+
+  return Array.from(symbolsByKey.values());
 };
