@@ -6,6 +6,7 @@ describe("getAssetTotal", () => {
   test("calculates the total value for an asset", () => {
     expect(
       getAssetTotal({
+        id: "stock-aapl",
         ticker: "AAPL",
         name: "Apple",
         price: 200,
@@ -24,6 +25,7 @@ describe("computeNetWorthSummary", () => {
         label: "Stocks",
         items: [
           {
+            id: "stock-aapl",
             ticker: "AAPL",
             name: "Apple",
             price: 200,
@@ -31,6 +33,7 @@ describe("computeNetWorthSummary", () => {
             kind: "stock",
           },
           {
+            id: "stock-tsla",
             ticker: "TSLA",
             name: "Tesla",
             price: 250,
@@ -44,6 +47,7 @@ describe("computeNetWorthSummary", () => {
         label: "Crypto",
         items: [
           {
+            id: "crypto-btc",
             ticker: "BTC",
             name: "Bitcoin",
             price: 40000,

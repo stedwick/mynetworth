@@ -84,7 +84,7 @@ export default function ScrollableTableContainer({
         }`}
         aria-hidden="true"
       >
-        <div className="absolute inset-y-0 right-0 w-14 bg-linear-to-l from-neutral-100/90 to-transparent dark:from-neutral-950/90" />
+        <div className="absolute inset-y-0 right-0 w-14 bg-linear-to-l from-slate-200/80 to-transparent dark:from-neutral-950/90" />
       </div>
     </div>
   );

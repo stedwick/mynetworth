@@ -7,6 +7,7 @@ export const mockCategories: AssetCategory[] = [
     label: "Stocks",
     items: [
       {
+        id: "stock-aapl",
         ticker: "AAPL",
         name: "Apple",
         price: 185.32,
@@ -14,6 +15,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "stock",
       },
       {
+        id: "stock-tsla",
         ticker: "TSLA",
         name: "Tesla",
         price: 240.11,
@@ -27,6 +29,7 @@ export const mockCategories: AssetCategory[] = [
     label: "Crypto",
     items: [
       {
+        id: "crypto-btc",
         ticker: "BTC",
         name: "Bitcoin",
         price: 41500,
@@ -34,6 +37,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "crypto",
       },
       {
+        id: "crypto-eth",
         ticker: "ETH",
         name: "Ethereum",
         price: 2400,
@@ -41,6 +45,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "crypto",
       },
       {
+        id: "wallet-cold-btc",
         ticker: "BTC",
         name: "Cold Wallet",
         price: 41500,
@@ -55,6 +60,7 @@ export const mockCategories: AssetCategory[] = [
     label: "Properties",
     items: [
       {
+        id: "property-home",
         ticker: "HOME",
         name: "Primary Home",
         price: 650000,
@@ -62,6 +68,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "manual",
       },
       {
+        id: "property-mortgage",
         ticker: "MORT",
         name: "Mortgage",
         price: -320000,
@@ -69,6 +76,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "manual",
       },
       {
+        id: "property-car",
         ticker: "AUTO",
         name: "Car",
         price: 28000,
@@ -82,6 +90,7 @@ export const mockCategories: AssetCategory[] = [
     label: "Retirement",
     items: [
       {
+        id: "retirement-401k",
         ticker: "VFFVX",
         name: "401K Target Retirement 2055",
         price: 120000,
@@ -89,6 +98,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "stock",
       },
       {
+        id: "retirement-vti",
         ticker: "VTI",
         name: "Vanguard Total Stock Market ETF",
         price: 80000,
@@ -96,6 +106,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "stock",
       },
       {
+        id: "retirement-fxaix",
         ticker: "FXAIX",
         name: "Fidelity 500 Index Fund",
         price: 45000,
@@ -109,6 +120,7 @@ export const mockCategories: AssetCategory[] = [
     label: "Cash",
     items: [
       {
+        id: "cash-bofa",
         ticker: "BOFA",
         name: "Bank of America",
         price: 12500,
@@ -116,6 +128,7 @@ export const mockCategories: AssetCategory[] = [
         kind: "manual",
       },
       {
+        id: "cash-chase",
         ticker: "CHASE",
         name: "Chase",
         price: 7300,

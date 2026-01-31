@@ -3,6 +3,7 @@ export type AssetKind = "stock" | "crypto" | "wallet" | "manual";
 export type WalletNetwork = "bitcoin" | "evm" | "solana";
 
 type BaseAssetItem = {
+  id: string;
   ticker: string;
   name: string;
   price: number;
@@ -30,8 +31,17 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const quantityFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 4,
+});
+
 export function formatUsd(value: number): string {
   return usdFormatter.format(value);
+}
+
+export function formatQuantity(value: number): string {
+  return quantityFormatter.format(value);
 }
 
 export function getAssetTotal(item: AssetItem) {

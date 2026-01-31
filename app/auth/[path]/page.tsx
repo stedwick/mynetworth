@@ -14,5 +14,9 @@ export default async function AuthPage({
 }) {
   const { path } = await params;
 
-  return <AuthView path={path} />;
+  return (
+    <div className="mx-auto flex w-full justify-center">
+      <AuthView path={path} />
+    </div>
+  );
 }

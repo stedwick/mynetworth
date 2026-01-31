@@ -13,6 +13,15 @@ bun dev
 
 Open http://localhost:3000 in your browser.
 
+## Scripts
+
+```bash
+bun run lint
+bun run test
+bun run format
+bun run check
+```
+
 ## Environment Variables
 
 Set these in `.env` or `.env.local`:
@@ -36,3 +45,5 @@ Neon Auth is wired with UI routes and middleware:
 - `proxy.ts` — Neon Auth middleware (route protection)
 - `lib/auth/client.ts` and `lib/auth/server.ts` — auth helpers
 - `app/lib/db.ts` — Neon Postgres client
+- `app/theme.css` — theme tokens used by `app/globals.css`
+- `app/components/templates/AppShellLayout.tsx` — global shell (header + hamburger menu)

@@ -14,5 +14,9 @@ export default async function AccountPage({
 }) {
   const { path } = await params;
 
-  return <AccountView path={path} hideNav />;
+  return (
+    <div className="mx-auto flex w-full max-w-md justify-center">
+      <AccountView path={path} hideNav />
+    </div>
+  );
 }

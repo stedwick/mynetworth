@@ -16,7 +16,7 @@ export default function MobileSidebarDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <div className="w-full md:hidden">
+    <div className="w-full">
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Trigger
           className="flex w-full items-center justify-start gap-3 rounded-none bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white/70"

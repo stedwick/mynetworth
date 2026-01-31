@@ -3,6 +3,7 @@
 ## Project Structure & Module Organization
 
 - `app/`: Next.js App Router routes (e.g. `app/page.tsx`, `app/layout.tsx`) and global styles (`app/globals.css`).
+- `app/theme.css`: Theme tokens used by global styles.
 - `app/api/auth/[...path]/route.ts`: Neon Auth API handler.
 - `app/auth/[path]` and `app/account/[path]`: Neon Auth UI routes.
 - `lib/auth/`: Neon Auth helpers (`client.ts`, `server.ts`).
@@ -11,6 +12,7 @@
 - `public/`: Static assets served from `/` (images, icons, etc.).
 - Config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `postcss.config.mjs` (Tailwind via PostCSS).
 - Build output: `.next/` (generated, ignored by git).
+- Component tiers: `app/components/atoms`, `app/components/molecules`, `app/components/organisms`, `app/components/templates`.
 
 ## Build, Test, and Development Commands
 
@@ -19,6 +21,8 @@
 - Production build: `bun run build`.
 - Run production server: `bun start`.
 - Lint: `bun run lint` (ESLint with `eslint-config-next`).
+- Format: `bun run format` (Prettier).
+- All checks: `bun run check` (lint + format + test).
 - Tests: `bun test`.
 
 ## Coding Style & Naming Conventions
@@ -27,6 +31,7 @@
 - Next.js `app/` components are Server Components by default; add `"use client"` only when you need hooks/browser APIs.
 - Match existing style: 2-space indentation, double quotes, semicolons, and Tailwind utility classes for styling.
 - Follow Next.js file conventions (`page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`).
+- Prefer shared formatters in `app/lib/networth.ts` (e.g., `formatUsd`, `formatQuantity`) instead of re-creating formatters in components.
 
 ## Testing Guidelines
 
@@ -46,6 +51,7 @@
 ## Architecture guidelines
 
 - Use Next.js App Router for routing and Server Components.
+- Global shell is owned by `app/layout.tsx` (header + hamburger menu).
 - Use TanStack Query for data fetching and caching.
 - Use Zustand for global state.
 - Use Zod for runtime type validation.
@@ -54,6 +60,7 @@
 - Use Neon for the database and auth (BetterAuth).
 - UI should be mobile-first and responsive.
 - Prefer component competition over prop drilling.
+- Keep API routes thin by delegating fetching/caching to `service.ts` modules.
 
 ## Agent-Specific Instructions
 
