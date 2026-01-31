@@ -12,8 +12,8 @@ const accountNavOrder = [
 ];
 
 const accountNavLabels: Record<string, string> = {
-  [accountViewPaths.SETTINGS]: "Account",
-  [accountViewPaths.SECURITY]: "Security",
+  [accountViewPaths.SETTINGS]: "Update Email",
+  [accountViewPaths.SECURITY]: "Update Password",
   [accountViewPaths.TEAMS]: "Teams",
   [accountViewPaths.API_KEYS]: "API Keys",
   [accountViewPaths.ORGANIZATIONS]: "Organizations",

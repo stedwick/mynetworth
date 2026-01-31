@@ -1,3 +1,4 @@
+import HomePageTemplate from "@/app/components/templates/HomePageTemplate";
 import { sql } from "@/app/lib/db";
 
 async function getDbVersion() {
@@ -8,10 +9,5 @@ async function getDbVersion() {
 export default async function Home() {
   const version = await getDbVersion();
 
-  return (
-    <main>
-      <h1>Next.js + Neon</h1>
-      <p>PostgreSQL Version: {version}</p>
-    </main>
-  );
+  return <HomePageTemplate version={version} />;
 }

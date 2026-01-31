@@ -123,4 +123,33 @@ body {
     color: #ffffff;
     border-color: #b63b3b;
   }
+
+  .scroll-hint {
+    opacity: 0;
+    transform: translateX(-2px);
+    visibility: hidden;
+    transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+    pointer-events: none;
+  }
+
+  .scrollable-table[data-scrollable="true"] .scroll-hint {
+    opacity: 1;
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .asset-sticky-total {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  :root.dark .asset-sticky-total {
+    background: transparent;
+    box-shadow: none;
+  }
+
 }
