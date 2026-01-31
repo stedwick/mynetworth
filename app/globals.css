@@ -91,6 +91,30 @@ body {
     filter: brightness(0.98);
   }
 
+  .app-button-primary {
+    background: var(--app-button-primary-bg);
+    color: var(--app-button-primary-fg);
+    border-color: var(--app-button-primary-border);
+  }
+
+  .app-button-primary:hover {
+    background: var(--app-button-primary-hover-bg);
+    color: var(--app-button-primary-hover-fg);
+    border-color: var(--app-button-primary-hover-border);
+  }
+
+  .app-button-cancel {
+    background: var(--app-button-cancel-bg);
+    color: var(--app-button-cancel-fg);
+    border-color: var(--app-button-cancel-border);
+  }
+
+  .app-button-cancel:hover {
+    background: var(--app-button-cancel-hover-bg);
+    color: var(--app-button-cancel-hover-fg);
+    border-color: var(--app-button-cancel-hover-border);
+  }
+
   .app-button-danger {
     background: var(--app-button-danger-bg);
     color: var(--app-button-danger-fg);

@@ -21,6 +21,20 @@
   --app-button-danger-hover-bg: #e25b5b;
   --app-button-danger-hover-fg: #ffffff;
   --app-button-danger-hover-border: #2a2a2a;
+
+  --app-button-primary-bg: #0284c7;
+  --app-button-primary-fg: #ffffff;
+  --app-button-primary-border: #0369a1;
+  --app-button-primary-hover-bg: #0ea5e9;
+  --app-button-primary-hover-fg: #ffffff;
+  --app-button-primary-hover-border: #0284c7;
+
+  --app-button-cancel-bg: #ffffff;
+  --app-button-cancel-fg: #475569;
+  --app-button-cancel-border: #cbd5e1;
+  --app-button-cancel-hover-bg: #f1f5f9;
+  --app-button-cancel-hover-fg: #0f172a;
+  --app-button-cancel-hover-border: #94a3b8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,6 +56,20 @@
     --app-button-danger-hover-bg: #f26a6a;
     --app-button-danger-hover-fg: #ffffff;
     --app-button-danger-hover-border: #b63b3b;
+
+    --app-button-primary-bg: #38bdf8;
+    --app-button-primary-fg: #0f172a;
+    --app-button-primary-border: #0ea5e9;
+    --app-button-primary-hover-bg: #7dd3fc;
+    --app-button-primary-hover-fg: #0f172a;
+    --app-button-primary-hover-border: #38bdf8;
+
+    --app-button-cancel-bg: #111827;
+    --app-button-cancel-fg: #e2e8f0;
+    --app-button-cancel-border: #334155;
+    --app-button-cancel-hover-bg: #1f2937;
+    --app-button-cancel-hover-fg: #ffffff;
+    --app-button-cancel-hover-border: #475569;
   }
 }
 
@@ -63,4 +91,18 @@
   --app-button-danger-hover-bg: #f26a6a;
   --app-button-danger-hover-fg: #ffffff;
   --app-button-danger-hover-border: #b63b3b;
+
+  --app-button-primary-bg: #38bdf8;
+  --app-button-primary-fg: #0f172a;
+  --app-button-primary-border: #0ea5e9;
+  --app-button-primary-hover-bg: #7dd3fc;
+  --app-button-primary-hover-fg: #0f172a;
+  --app-button-primary-hover-border: #38bdf8;
+
+  --app-button-cancel-bg: #111827;
+  --app-button-cancel-fg: #e2e8f0;
+  --app-button-cancel-border: #334155;
+  --app-button-cancel-hover-bg: #1f2937;
+  --app-button-cancel-hover-fg: #ffffff;
+  --app-button-cancel-hover-border: #475569;
 }

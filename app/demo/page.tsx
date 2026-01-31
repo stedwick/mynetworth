@@ -140,5 +140,5 @@ export const mockCategories: AssetCategory[] = [
 ];
 
 export default function DemoPage() {
-  return <MePageTemplate categories={mockCategories} />;
+  return <MePageTemplate categories={mockCategories} showEditActions={false} />;
 }

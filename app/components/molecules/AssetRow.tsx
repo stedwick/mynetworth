@@ -13,7 +13,13 @@ import {
   getTotalColorClass,
 } from "@/app/components/organisms/assetTableUtils";
 
-export default function AssetRow({ item }: { item: AssetItem }) {
+export default function AssetRow({
+  item,
+  showEditActions = true,
+}: {
+  item: AssetItem;
+  showEditActions?: boolean;
+}) {
   const total = getAssetTotal(item);
   const icon = getAssetIcon(item);
   const isDebt = total < 0;
@@ -44,9 +50,14 @@ export default function AssetRow({ item }: { item: AssetItem }) {
           ) : null}
         </span>
       </td>
-      <td className="w-10 px-2 py-3 text-center align-middle">
-        <EditButton label={`Edit ${item.name}`} />
-      </td>
+      {showEditActions ? (
+        <td className="w-10 px-2 py-3 text-center align-middle">
+          <EditButton
+            label={`Edit ${item.name}`}
+            href={`/assets/${encodeURIComponent(item.id)}/edit`}
+          />
+        </td>
+      ) : null}
       <td className="w-44 px-4 py-3 text-slate-900 dark:text-white">
         <div className="space-y-1">
           <div className="min-w-0 truncate">{item.name}</div>

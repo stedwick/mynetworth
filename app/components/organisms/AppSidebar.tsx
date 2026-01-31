@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { authViewPaths } from "@neondatabase/auth/react/ui";
+import { authClient } from "@/lib/auth/client";
 
 const navItems = [
   {
@@ -46,7 +47,10 @@ export default function AppSidebar({
 }) {
   const pathname = usePathname() ?? "";
   const logoutHref = `/auth/${authViewPaths.SIGN_OUT}`;
+  const signInHref = `/auth/${authViewPaths.SIGN_IN}`;
   const handleNavigate = () => onNavigate?.();
+  const { data } = authClient.useSession();
+  const isAuthenticated = Boolean(data?.session);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -86,13 +90,23 @@ export default function AppSidebar({
         })}
       </nav>
       <div className="mt-auto pt-6">
-        <Link
-          href={logoutHref}
-          onClick={handleNavigate}
-          className="app-button app-button-danger w-full justify-center"
-        >
-          Log out
-        </Link>
+        {isAuthenticated ? (
+          <Link
+            href={logoutHref}
+            onClick={handleNavigate}
+            className="app-button app-button-danger w-full justify-center"
+          >
+            Log out
+          </Link>
+        ) : (
+          <Link
+            href={signInHref}
+            onClick={handleNavigate}
+            className="app-button w-full justify-center"
+          >
+            Sign in / Sign up
+          </Link>
+        )}
       </div>
     </div>
   );
