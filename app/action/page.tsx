@@ -1,6 +1,6 @@
 import { normalizeComment } from "@/app/lib/comments";
 import { sql } from "@/app/lib/db";
-import { revalidatePath } from "next/cache";
+import { cacheLife, revalidatePath } from "next/cache";
 
 type CommentRow = {
   id: number;
@@ -24,6 +24,9 @@ export default async function ActionPage() {
   }
 
   async function getComments(): Promise<CommentRow[]> {
+    "use cache";
+    cacheLife("minutes");
+
     await sql`CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, comment TEXT)`;
     const comments = await sql`SELECT * FROM comments`;
     return comments as CommentRow[];
