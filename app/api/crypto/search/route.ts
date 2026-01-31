@@ -7,8 +7,7 @@ import {
 } from "./utils";
 
 export const runtime = "nodejs";
-export const dynamic = "force-static";
-export const revalidate = 86400;
+export const dynamic = "force-dynamic";
 
 const getCachedSearchResults = unstable_cache(
   async (query: string, apiKey: string) => {
