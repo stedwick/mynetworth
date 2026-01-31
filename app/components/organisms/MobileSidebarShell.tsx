@@ -10,7 +10,11 @@ export default function MobileSidebarShell() {
   const close = () => setOpen(false);
 
   return (
-    <MobileSidebarDialog title="Menu" open={open} onOpenChange={setOpen}>
+    <MobileSidebarDialog
+      title="My Net Worth"
+      open={open}
+      onOpenChange={setOpen}
+    >
       <AppSidebar onNavigate={close} />
     </MobileSidebarDialog>
   );
