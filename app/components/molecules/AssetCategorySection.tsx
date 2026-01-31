@@ -21,11 +21,11 @@ export default function AssetCategorySection({
   return (
     <>
       <tr className="group bg-slate-50/80 dark:bg-white/5">
+        <th className="w-6 px-1.5 py-2 text-center align-middle">
+          <EditButton label={`Edit ${category.label}`} />
+        </th>
         <th className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-white/60">
           {category.label}
-        </th>
-        <th className="w-10 px-2 py-2 text-center align-middle">
-          <EditButton label={`Edit ${category.label}`} />
         </th>
         <th
           colSpan={4}

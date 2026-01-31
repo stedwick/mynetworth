@@ -20,6 +20,12 @@ export default function AssetRow({ item }: { item: AssetItem }) {
 
   return (
     <tr className="group">
+      <td className="w-6 px-1.5 py-3 text-center align-middle">
+        <EditButton
+          label={`Edit ${item.name}`}
+          href={`/assets/${encodeURIComponent(item.id)}/edit`}
+        />
+      </td>
       <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-white/60">
         <span className="flex min-w-0 items-center gap-2">
           <Image
@@ -43,12 +49,6 @@ export default function AssetRow({ item }: { item: AssetItem }) {
             />
           ) : null}
         </span>
-      </td>
-      <td className="w-10 px-2 py-3 text-center align-middle">
-        <EditButton
-          label={`Edit ${item.name}`}
-          href={`/assets/${encodeURIComponent(item.id)}/edit`}
-        />
       </td>
       <td className="w-44 px-4 py-3 text-slate-900 dark:text-white">
         <div className="space-y-1">

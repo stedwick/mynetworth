@@ -27,10 +27,10 @@ export default function AssetTable({
           <table className="w-full min-w-208 table-fixed text-left text-sm">
             <thead className="border-b border-slate-200/70 bg-slate-50/80 text-xs uppercase tracking-[0.2em] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50">
               <tr>
-                <th className="w-28 px-4 py-3 font-semibold">Ticker</th>
-                <th className="w-10 px-2 py-3 text-center font-semibold">
+                <th className="w-6 px-1.5 py-3 text-center font-semibold">
                   <span className="sr-only">Edit</span>
                 </th>
+                <th className="w-28 px-4 py-3 font-semibold">Ticker</th>
                 <th className="w-44 px-4 py-3 font-semibold">Name</th>
                 <th className="w-28 px-4 py-3 font-semibold">Price</th>
                 <th className="w-16 px-4 py-3 font-semibold">Qty</th>

@@ -175,6 +175,12 @@ body {
     pointer-events: auto;
   }
 
+  @media (max-width: 768px) {
+    .asset-edit-button {
+      opacity: 1;
+    }
+  }
+
   .asset-sticky-total {
     position: sticky;
     right: 0;
