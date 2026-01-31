@@ -10,10 +10,11 @@ import {
 } from "@/app/lib/asset-form";
 
 export default function NewAssetPage() {
-  const { control, handleSubmit, formState } = useForm<AssetEditFormValues>({
-    defaultValues: assetEditDefaultValues,
-    mode: "onBlur",
-  });
+  const { control, handleSubmit, formState, setValue } =
+    useForm<AssetEditFormValues>({
+      defaultValues: assetEditDefaultValues,
+      mode: "onBlur",
+    });
 
   const onSubmit = handleSubmit(() => {});
 
@@ -24,6 +25,7 @@ export default function NewAssetPage() {
       form={
         <AssetEditForm
           control={control}
+          setValue={setValue}
           onSubmit={onSubmit}
           submitting={formState.isSubmitting}
           submitCount={formState.submitCount}
