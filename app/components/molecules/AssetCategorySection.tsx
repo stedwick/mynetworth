@@ -22,7 +22,10 @@ export default function AssetCategorySection({
     <>
       <tr className="group bg-slate-50/80 dark:bg-white/5">
         <th className="w-6 px-1.5 py-2 text-center align-middle">
-          <EditButton label={`Edit ${category.label}`} />
+          <EditButton
+            label={`Edit ${category.label}`}
+            href={`/categories/${encodeURIComponent(category.id)}/edit`}
+          />
         </th>
         <th className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-white/60">
           {category.label}

@@ -197,6 +197,10 @@ body {
     display: none !important;
   }
 
+  .demo-hide-edits .category-add-button {
+    display: none !important;
+  }
+
   :root.dark .asset-sticky-total {
     background: transparent;
     box-shadow: none;

@@ -22,6 +22,10 @@ bun run format
 bun run check
 ```
 
+## UI Notes
+
+- Do not use Base UI Button. Use Next.js `Link` styled with `app-button*` classes, or a native `<button>` with those classes for form actions.
+
 ## Environment Variables
 
 Set these in `.env` or `.env.local`:

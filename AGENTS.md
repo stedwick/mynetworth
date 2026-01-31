@@ -55,7 +55,7 @@
 - Use TanStack Query for data fetching and caching.
 - Use Zustand for global state.
 - Use Zod for runtime type validation.
-- Use Base UI for styling.
+- Use Base UI for styling (do not use Base UI Button).
 - Use Icons8 for icons.
 - Use Neon for the database and auth (BetterAuth).
 - UI should be mobile-first and responsive.

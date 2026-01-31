@@ -3,12 +3,11 @@
 import { type FormEventHandler } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Button } from "@base-ui/react/button";
+import { Combobox } from "@base-ui/react/combobox";
 import { Dialog } from "@base-ui/react/dialog";
 import { Field } from "@base-ui/react/field";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { Select } from "@base-ui/react/select";
 import {
   Controller,
   type Control,
@@ -27,12 +26,11 @@ const fieldLabelClassName =
 const fieldControlClassName =
   "h-11 w-full rounded-lg border border-slate-200/80 bg-white px-3 text-sm text-slate-900 shadow-sm transition focus:outline focus:outline-2 focus:-outline-offset-1 focus:outline-slate-900/40 disabled:cursor-not-allowed disabled:border-slate-200/60 disabled:bg-slate-100/80 disabled:text-slate-400 dark:border-white/10 dark:bg-neutral-900/40 dark:text-white/90 dark:focus:outline-white/30 dark:disabled:border-white/10 dark:disabled:bg-white/5 dark:disabled:text-white/40";
 const fieldErrorClassName = "text-xs text-rose-600 dark:text-rose-400";
-const selectTriggerClassName =
-  "flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white px-3 text-sm text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-slate-900/40 data-[popup-open]:border-slate-300 data-[popup-open]:bg-slate-50 dark:border-white/10 dark:bg-neutral-900/40 dark:text-white/90 dark:hover:bg-white/10 dark:data-[popup-open]:bg-white/10";
 const selectPopupClassName =
   "min-w-[var(--anchor-width)] rounded-xl border border-slate-200/70 bg-white/95 p-1 text-sm text-slate-900 shadow-lg outline-none dark:border-white/10 dark:bg-neutral-950/95 dark:text-white";
 const selectItemClassName =
   "grid cursor-default grid-cols-[0.75rem_1fr] items-center gap-2 rounded-lg px-3 py-2 outline-none transition data-[highlighted]:bg-slate-900 data-[highlighted]:text-white dark:data-[highlighted]:bg-white dark:data-[highlighted]:text-slate-900";
+const comboboxListClassName = "max-h-64 overflow-y-auto py-1";
 const radioRootClassName =
   "flex size-4 items-center justify-center rounded-full border border-slate-300 transition data-[checked]:border-slate-900 data-[checked]:bg-slate-900 data-[unchecked]:bg-white dark:border-white/30 dark:data-[checked]:border-white dark:data-[checked]:bg-white dark:data-[unchecked]:bg-transparent";
 const radioIndicatorClassName =
@@ -457,82 +455,83 @@ export default function AssetEditForm({
               name="category"
               control={control}
               rules={{ required: "Category is required." }}
-              render={({ field, fieldState }) => (
-                <Field.Root
-                  name={field.name}
-                  invalid={fieldState.invalid}
-                  touched={fieldState.isTouched || showAllErrors}
-                  dirty={fieldState.isDirty}
-                  className={fieldRootClassName}
-                >
-                  <Field.Label className={fieldLabelClassName}>
-                    Category
-                  </Field.Label>
-                  <Select.Root
-                    items={categoryOptions}
-                    value={field.value || null}
-                    onValueChange={(nextValue) =>
-                      field.onChange(nextValue ?? "")
-                    }
+              render={({ field, fieldState }) => {
+                const selectedCategory =
+                  categoryOptions.find(
+                    (option) => option.value === field.value,
+                  ) ?? null;
+                const inputValue = selectedCategory?.label ?? field.value ?? "";
+
+                return (
+                  <Field.Root
+                    name={field.name}
+                    invalid={fieldState.invalid}
+                    touched={fieldState.isTouched || showAllErrors}
+                    dirty={fieldState.isDirty}
+                    className={fieldRootClassName}
                   >
-                    <Select.Trigger className={selectTriggerClassName}>
-                      <Select.Value>
-                        {(value) => {
-                          const current =
-                            categoryOptions.find(
-                              (option) => option.value === value,
-                            )?.label ?? "Select category";
-                          return (
-                            <span
-                              className={
-                                value
-                                  ? "text-slate-900 dark:text-white"
-                                  : "text-slate-400 dark:text-white/40"
-                              }
-                            >
-                              {current}
-                            </span>
-                          );
-                        }}
-                      </Select.Value>
-                      <Select.Icon className="text-slate-400 dark:text-white/40">
-                        <span aria-hidden="true">▾</span>
-                      </Select.Icon>
-                    </Select.Trigger>
-                    <Select.Portal>
-                      <Select.Positioner sideOffset={8} className="z-50">
-                        <Select.Popup className={selectPopupClassName}>
-                          <Select.List className="max-h-64 overflow-y-auto py-1">
-                            {categoryOptions.map((option) => (
-                              <Select.Item
-                                key={option.value}
-                                value={option.value}
-                                className={selectItemClassName}
-                              >
-                                <Select.ItemIndicator className="text-xs">
-                                  ✓
-                                </Select.ItemIndicator>
-                                <Select.ItemText>
-                                  {option.label}
-                                </Select.ItemText>
-                              </Select.Item>
-                            ))}
-                          </Select.List>
-                        </Select.Popup>
-                      </Select.Positioner>
-                    </Select.Portal>
-                  </Select.Root>
-                  <Field.Error
-                    match={
-                      (fieldState.isTouched || showAllErrors) &&
-                      !!fieldState.error
-                    }
-                    className={fieldErrorClassName}
-                  >
-                    {fieldState.error?.message}
-                  </Field.Error>
-                </Field.Root>
-              )}
+                    <Field.Label className={fieldLabelClassName}>
+                      Category
+                    </Field.Label>
+                    <Combobox.Root
+                      items={categoryOptions}
+                      value={selectedCategory}
+                      inputValue={inputValue}
+                      onValueChange={(nextValue) => {
+                        field.onChange(nextValue?.value ?? "");
+                      }}
+                      onInputValueChange={(nextInputValue, { reason }) => {
+                        if (reason === "item-press") {
+                          return;
+                        }
+                        field.onChange(nextInputValue);
+                      }}
+                    >
+                      <Combobox.Input
+                        ref={field.ref}
+                        className={fieldControlClassName}
+                        placeholder="Select or type a category"
+                        onBlur={field.onBlur}
+                      />
+                      <Combobox.Portal>
+                        <Combobox.Positioner sideOffset={8} className="z-50">
+                          <Combobox.Popup className={selectPopupClassName}>
+                            <Combobox.Empty className="px-3 py-2 text-xs text-slate-500 dark:text-white/50">
+                              No categories found.
+                            </Combobox.Empty>
+                            <Combobox.List className={comboboxListClassName}>
+                              {(option: (typeof categoryOptions)[number]) => (
+                                <Combobox.Item
+                                  key={option.value}
+                                  value={option}
+                                  className={selectItemClassName}
+                                >
+                                  <Combobox.ItemIndicator className="text-xs">
+                                    ✓
+                                  </Combobox.ItemIndicator>
+                                  <span>{option.label}</span>
+                                </Combobox.Item>
+                              )}
+                            </Combobox.List>
+                          </Combobox.Popup>
+                        </Combobox.Positioner>
+                      </Combobox.Portal>
+                    </Combobox.Root>
+                    <p className="text-xs text-slate-500 dark:text-white/50">
+                      Choose an existing category or type a new one.
+                    </p>
+                    <Field.Error
+                      match={
+                        (fieldState.isTouched || showAllErrors) &&
+                        !!fieldState.error
+                      }
+                      className={fieldErrorClassName}
+                    >
+                      {fieldState.error?.message}
+                    </Field.Error>
+                  </Field.Root>
+                );
+              }}
             />
 
             <Controller
@@ -579,7 +578,7 @@ export default function AssetEditForm({
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button
+          <button
             type="button"
             onClick={() => router.back()}
             className="app-button app-button-cancel w-full sm:w-auto"
@@ -594,7 +593,7 @@ export default function AssetEditForm({
               loading="lazy"
             />
             Go back
-          </Button>
+          </button>
           {showDelete ? (
             <Dialog.Root>
               <Dialog.Trigger
@@ -658,7 +657,7 @@ export default function AssetEditForm({
             </Dialog.Root>
           ) : null}
         </div>
-        <Button
+        <button
           type="submit"
           className="app-button app-button-primary w-full sm:w-auto"
           disabled={submitting}
@@ -673,7 +672,7 @@ export default function AssetEditForm({
             loading="lazy"
           />
           Save asset
-        </Button>
+        </button>
       </div>
     </form>
   );
