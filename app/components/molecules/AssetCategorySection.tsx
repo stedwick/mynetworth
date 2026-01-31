@@ -4,7 +4,7 @@ import {
   type AssetCategory,
 } from "@/app/lib/networth";
 
-import EditButton from "@/app/components/atoms/EditButton";
+import EditLink from "@/app/components/atoms/EditLink";
 import AssetRow from "@/app/components/molecules/AssetRow";
 import { getTotalColorClass } from "@/app/components/organisms/assetTableUtils";
 
@@ -22,7 +22,7 @@ export default function AssetCategorySection({
     <>
       <tr className="group bg-slate-50/80 dark:bg-white/5">
         <th className="w-6 px-1.5 py-2 text-center align-middle">
-          <EditButton
+          <EditLink
             label={`Edit ${category.label}`}
             href={`/categories/${encodeURIComponent(category.id)}/edit`}
           />

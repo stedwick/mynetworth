@@ -6,7 +6,7 @@ import {
   getAssetTotal,
   type AssetItem,
 } from "@/app/lib/networth";
-import EditButton from "@/app/components/atoms/EditButton";
+import EditLink from "@/app/components/atoms/EditLink";
 import {
   getAssetIcon,
   getAssetKindLabel,
@@ -21,7 +21,7 @@ export default function AssetRow({ item }: { item: AssetItem }) {
   return (
     <tr className="group">
       <td className="w-6 px-1.5 py-3 text-center align-middle">
-        <EditButton
+        <EditLink
           label={`Edit ${item.name}`}
           href={`/assets/${encodeURIComponent(item.id)}/edit`}
         />
