@@ -480,8 +480,14 @@ export default function AssetEditForm({
                       onValueChange={(nextValue) => {
                         field.onChange(nextValue?.value ?? "");
                       }}
-                      onInputValueChange={(nextInputValue, { reason }) => {
-                        if (reason === "item-press") {
+                      onInputValueChange={(nextInputValue, eventDetails) => {
+                        if (eventDetails.reason === "item-press") {
+                          return;
+                        }
+                        if (
+                          eventDetails.reason === "input-clear" &&
+                          eventDetails.event?.type === "base-ui"
+                        ) {
                           return;
                         }
                         field.onChange(nextInputValue);
