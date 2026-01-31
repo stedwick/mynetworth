@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-export const yahooQuoteSchema = z
-  .object({
-    symbol: z.string(),
-    regularMarketPrice: z.number().nullable().optional(),
-  })
-  .passthrough();
+export const yahooQuoteSchema = z.looseObject({
+  symbol: z.string(),
+  regularMarketPrice: z.number().nullable().optional(),
+});
 
 const yahooQuoteArraySchema = z.array(yahooQuoteSchema);
 
