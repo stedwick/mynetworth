@@ -22,19 +22,25 @@ describe("parseAddressParam", () => {
 
 describe("isEthAddress", () => {
   it("accepts valid ETH addresses", () => {
-    expect(isEthAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(true);
+    expect(isEthAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(
+      true,
+    );
   });
 
   it("rejects invalid ETH addresses", () => {
     expect(isEthAddress("0x123")).toBe(false);
-    expect(isEthAddress("396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(false);
+    expect(isEthAddress("396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(
+      false,
+    );
   });
 });
 
 describe("isBtcAddress", () => {
   it("accepts valid BTC addresses", () => {
     expect(isBtcAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(true);
-    expect(isBtcAddress("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080")).toBe(true);
+    expect(isBtcAddress("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080")).toBe(
+      true,
+    );
   });
 
   it("rejects invalid BTC addresses", () => {
@@ -45,20 +51,30 @@ describe("isBtcAddress", () => {
 
 describe("isSolAddress", () => {
   it("accepts valid Solana addresses", () => {
-    expect(isSolAddress("So11111111111111111111111111111111111111112")).toBe(true);
+    expect(isSolAddress("So11111111111111111111111111111111111111112")).toBe(
+      true,
+    );
   });
 
   it("rejects invalid Solana addresses", () => {
     expect(isSolAddress("So111")).toBe(false);
-    expect(isSolAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(false);
+    expect(isSolAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(
+      false,
+    );
   });
 });
 
 describe("isSupportedWalletAddress", () => {
   it("accepts ETH, SOL, or BTC addresses", () => {
-    expect(isSupportedWalletAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(true);
-    expect(isSupportedWalletAddress("So11111111111111111111111111111111111111112")).toBe(true);
-    expect(isSupportedWalletAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(true);
+    expect(
+      isSupportedWalletAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49"),
+    ).toBe(true);
+    expect(
+      isSupportedWalletAddress("So11111111111111111111111111111111111111112"),
+    ).toBe(true);
+    expect(isSupportedWalletAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(
+      true,
+    );
   });
 
   it("rejects unknown address formats", () => {

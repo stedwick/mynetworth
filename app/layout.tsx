@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NeonAuthProvider } from "@/app/components/organisms/NeonAuthProvider";
+import AppShellLayout from "@/app/components/templates/AppShellLayout";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,7 +30,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <div className="root">
-          <NeonAuthProvider>{children}</NeonAuthProvider>
+          <NeonAuthProvider>
+            <AppShellLayout>{children}</AppShellLayout>
+          </NeonAuthProvider>
         </div>
       </body>
     </html>

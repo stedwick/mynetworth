@@ -6,10 +6,7 @@ export type AccountNavItem = {
   href: string;
 };
 
-const accountNavOrder = [
-  accountViewPaths.SETTINGS,
-  accountViewPaths.SECURITY,
-];
+const accountNavOrder = [accountViewPaths.SETTINGS, accountViewPaths.SECURITY];
 
 const accountNavLabels: Record<string, string> = {
   [accountViewPaths.SETTINGS]: "Update Email",
@@ -19,7 +16,9 @@ const accountNavLabels: Record<string, string> = {
   [accountViewPaths.ORGANIZATIONS]: "Organizations",
 };
 
-export function getAccountNavItems(basePath: string = "/account"): AccountNavItem[] {
+export function getAccountNavItems(
+  basePath: string = "/account",
+): AccountNavItem[] {
   return accountNavOrder.map((path) => ({
     path,
     label: accountNavLabels[path] || path,

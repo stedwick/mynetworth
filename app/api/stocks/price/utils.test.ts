@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { mapYahooQuotesToPrices, parseSymbolsParam, parseYahooQuotes } from "./utils";
+import {
+  mapYahooQuotesToPrices,
+  parseSymbolsParam,
+  parseYahooQuotes,
+} from "./utils";
 
 describe("parseSymbolsParam", () => {
   it("normalizes, trims, and de-duplicates symbols", () => {

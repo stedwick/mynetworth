@@ -12,7 +12,7 @@ export default async function ActionPage() {
     "use server";
     const rawComment = formData.get("comment");
     const comment = normalizeComment(
-      typeof rawComment === "string" ? rawComment : ""
+      typeof rawComment === "string" ? rawComment : "",
     );
 
     if (!comment) {

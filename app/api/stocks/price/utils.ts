@@ -40,7 +40,10 @@ export const mapYahooQuotesToPrices = (
   const prices: Record<string, number> = {};
 
   for (const quote of quotes) {
-    if (typeof quote.regularMarketPrice === "number" && Number.isFinite(quote.regularMarketPrice)) {
+    if (
+      typeof quote.regularMarketPrice === "number" &&
+      Number.isFinite(quote.regularMarketPrice)
+    ) {
       prices[quote.symbol] = quote.regularMarketPrice;
     }
   }

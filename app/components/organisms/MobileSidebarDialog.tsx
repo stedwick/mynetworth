@@ -27,13 +27,11 @@ export default function MobileSidebarDialog({
             height={20}
             loading="lazy"
           />
-          <span className="uppercase tracking-[0.2em]">
-            {title}
-          </span>
+          <span className="uppercase tracking-[0.2em]">{title}</span>
         </Dialog.Trigger>
         <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-40 min-h-dvh bg-slate-950/45 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 supports-[-webkit-touch-callout:none]:absolute" />
-          <Dialog.Popup className="fixed inset-y-0 left-0 z-50 w-[min(20rem,85vw)] translate-x-0 transition-[transform,opacity] duration-200 data-[starting-style]:-translate-x-full data-[starting-style]:opacity-30 data-[ending-style]:-translate-x-full data-[ending-style]:opacity-30">
+          <Dialog.Backdrop className="fixed inset-0 z-40 min-h-dvh bg-slate-950/45 transition-opacity duration-200 data-starting-style:opacity-0 data-ending-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute" />
+          <Dialog.Popup className="fixed inset-y-0 left-0 z-50 w-[min(20rem,85vw)] translate-x-0 transition-[transform,opacity] duration-200 data-starting-style:-translate-x-full data-starting-style:opacity-30 data-ending-style:-translate-x-full data-ending-style:opacity-30">
             <div className="m-3 flex h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-300/30 bg-white/95 backdrop-blur-xl shadow-[24px_0_45px_rgba(15,23,42,0.2)] dark:border-slate-400/25 dark:bg-slate-900/90 dark:shadow-[24px_0_45px_rgba(0,0,0,0.45)]">
               <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-white/90">
                 <Dialog.Title className="uppercase tracking-[0.2em] text-slate-600 dark:text-white/60">
@@ -54,9 +52,7 @@ export default function MobileSidebarDialog({
                   />
                 </Dialog.Close>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                {children}
-              </div>
+              <div className="flex-1 overflow-y-auto p-4">{children}</div>
             </div>
           </Dialog.Popup>
         </Dialog.Portal>

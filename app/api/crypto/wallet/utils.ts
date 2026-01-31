@@ -13,11 +13,15 @@ const mobulaWalletPortfolioSchema = z
 
 export type MobulaWalletPortfolio = z.infer<typeof mobulaWalletPortfolioSchema>;
 
-export const parseMobulaWalletPortfolio = (data: unknown): MobulaWalletPortfolio => {
+export const parseMobulaWalletPortfolio = (
+  data: unknown,
+): MobulaWalletPortfolio => {
   return mobulaWalletPortfolioSchema.parse(data);
 };
 
-export const extractWalletBalanceUsd = (payload: MobulaWalletPortfolio): number => {
+export const extractWalletBalanceUsd = (
+  payload: MobulaWalletPortfolio,
+): number => {
   const balance = payload.data.total_wallet_balance ?? payload.data.balance_usd;
 
   if (typeof balance !== "number" || !Number.isFinite(balance)) {
@@ -93,7 +97,10 @@ export const sumBtcUtxoSatoshis = (utxos: BtcUtxo[]): number => {
   return total;
 };
 
-export const convertSatoshisToUsd = (satoshis: number, btcUsdPrice: number): number => {
+export const convertSatoshisToUsd = (
+  satoshis: number,
+  btcUsdPrice: number,
+): number => {
   return (satoshis / 1e8) * btcUsdPrice;
 };
 

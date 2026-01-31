@@ -1,5 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { authViewPaths } from "@neondatabase/auth/react/ui";
 
 const navItems = [
   {
@@ -34,19 +39,16 @@ const navItems = [
   },
 ];
 
-export default function AppSidebar({
-  activeHref,
-  logoutHref,
-}: {
-  activeHref?: string;
-  logoutHref?: string;
-}) {
+export default function AppSidebar() {
+  const pathname = usePathname() ?? "";
+  const logoutHref = `/auth/${authViewPaths.SIGN_OUT}`;
+
   return (
     <div className="flex min-h-full flex-col">
       <div className="app-sidebar-label">Menu</div>
       <nav className="app-sidebar-nav">
         {navItems.map((item) => {
-          const isActive = item.href === activeHref;
+          const isActive = item.href === pathname;
           return (
             <Link
               key={item.id}
@@ -77,16 +79,14 @@ export default function AppSidebar({
           );
         })}
       </nav>
-      {logoutHref ? (
-        <div className="mt-auto pt-6">
-          <Link
-            href={logoutHref}
-            className="app-button app-button-danger w-full justify-center"
-          >
-            Log out
-          </Link>
-        </div>
-      ) : null}
+      <div className="mt-auto pt-6">
+        <Link
+          href={logoutHref}
+          className="app-button app-button-danger w-full justify-center"
+        >
+          Log out
+        </Link>
+      </div>
     </div>
   );
 }

@@ -8,13 +8,9 @@ const navItems = [
   { label: "Update Password", href: "/account/security" },
 ];
 
-export default function HomePageTemplate({
-  version,
-}: {
-  version: string;
-}) {
+export default function HomePageTemplate({ version }: { version: string }) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.12),_transparent_60%)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.12),transparent_60%)]">
       <header className="border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -15,7 +15,8 @@ import { mapMobulaAssetsToPrices } from "../price/utils";
 
 export const runtime = "nodejs";
 
-const MOBULA_WALLET_PORTFOLIO_URL = "https://api.mobula.io/api/1/wallet/portfolio";
+const MOBULA_WALLET_PORTFOLIO_URL =
+  "https://api.mobula.io/api/1/wallet/portfolio";
 const BTCSCAN_API_URL = "https://btcscan.org/api";
 
 const getBtcUtxos = unstable_cache(
@@ -117,17 +118,22 @@ export async function GET(request: Request): Promise<Response> {
 
       return Response.json(responseBody, {
         headers: {
-          "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
+          "Cache-Control":
+            "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
         },
       });
     }
 
     const totalBalanceUsd = await getMobulaWalletBalance(addressParam);
-    const responseBody = mapWalletBalanceToResponse(addressParam, totalBalanceUsd);
+    const responseBody = mapWalletBalanceToResponse(
+      addressParam,
+      totalBalanceUsd,
+    );
 
     return Response.json(responseBody, {
       headers: {
-        "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
+        "Cache-Control":
+          "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
       },
     });
   } catch {

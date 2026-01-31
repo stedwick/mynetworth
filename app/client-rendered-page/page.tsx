@@ -12,11 +12,7 @@ export default function ClientRenderedPage() {
       {data?.user ? <p>User ID: {data.user.id}</p> : null}
       <h2 className="text-lg font-medium">Session and User Data</h2>
       <pre className="overflow-x-auto rounded-md bg-zinc-100 p-4 text-sm text-zinc-900">
-        {JSON.stringify(
-          { session: data?.session, user: data?.user },
-          null,
-          2
-        )}
+        {JSON.stringify({ session: data?.session, user: data?.user }, null, 2)}
       </pre>
     </main>
   );

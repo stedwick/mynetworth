@@ -1,12 +1,7 @@
-import { authViewPaths } from "@neondatabase/auth/react/ui/server";
-
 import MePageTemplate from "@/app/components/templates/MePageTemplate";
-import {
-  computeNetWorthSummary,
-  type AssetCategory,
-} from "@/app/lib/networth";
+import { type AssetCategory } from "@/app/lib/networth";
 
-const categories: AssetCategory[] = [
+export const mockCategories: AssetCategory[] = [
   {
     id: "stocks",
     label: "Stocks",
@@ -132,16 +127,5 @@ const categories: AssetCategory[] = [
 ];
 
 export default function DemoPage() {
-  const { categoryTotals, netWorth } = computeNetWorthSummary(categories);
-  const logoutHref = `/auth/${authViewPaths.SIGN_OUT}`;
-
-  return (
-    <MePageTemplate
-      activeHref="/demo"
-      logoutHref={logoutHref}
-      categories={categories}
-      categoryTotals={categoryTotals}
-      netWorth={netWorth}
-    />
-  );
+  return <MePageTemplate categories={mockCategories} />;
 }

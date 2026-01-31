@@ -21,6 +21,6 @@ export async function GET() {
       headers: {
         "Content-Type": "application/json",
       },
-    }
+    },
   );
 }

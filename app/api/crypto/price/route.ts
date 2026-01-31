@@ -35,7 +35,8 @@ export async function GET(request: Request): Promise<Response> {
 
     return Response.json(prices, {
       headers: {
-        "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
+        "Cache-Control":
+          "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60",
       },
     });
   } catch {

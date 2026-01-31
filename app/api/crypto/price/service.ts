@@ -6,7 +6,10 @@ const MOBULA_MULTI_DATA_URL = "https://api.mobula.io/api/1/market/multi-data";
 export const getMobulaAssets = unstable_cache(
   async (symbols: string[], apiKey: string) => {
     const url = `${MOBULA_MULTI_DATA_URL}?symbols=${encodeURIComponent(symbols.join(","))}`;
-    console.info("[crypto/price] Fetching Mobula prices for:", symbols.join(","));
+    console.info(
+      "[crypto/price] Fetching Mobula prices for:",
+      symbols.join(","),
+    );
 
     const response = await fetch(url, {
       headers: {
