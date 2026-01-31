@@ -5,12 +5,10 @@ type MobulaAsset = {
   price?: number | null;
 };
 
-const mobulaAssetSchema = z
-  .object({
-    symbol: z.string(),
-    price: z.number().nullable().optional(),
-  })
-  .passthrough();
+const mobulaAssetSchema = z.looseObject({
+  symbol: z.string(),
+  price: z.number().nullable().optional(),
+});
 
 const mobulaMultiDataSchema = z.object({
   dataArray: z.array(z.union([mobulaAssetSchema, z.null()])).optional(),
