@@ -1,15 +1,11 @@
 import { z } from "zod";
 
-const mobulaWalletPortfolioSchema = z
-  .object({
-    data: z
-      .object({
-        total_wallet_balance: z.number().optional(),
-        balance_usd: z.number().optional(),
-      })
-      .passthrough(),
-  })
-  .passthrough();
+const mobulaWalletPortfolioSchema = z.looseObject({
+  data: z.looseObject({
+    total_wallet_balance: z.number().optional(),
+    balance_usd: z.number().optional(),
+  }),
+});
 
 export type MobulaWalletPortfolio = z.infer<typeof mobulaWalletPortfolioSchema>;
 
@@ -50,16 +46,14 @@ const supportedWalletAddressSchema = z.union([
   btcAddressSchema,
 ]);
 
-const btcUtxoSchema = z
-  .object({
-    value: z.number().optional(),
-    status: z
-      .object({
-        confirmed: z.boolean().optional(),
-      })
-      .optional(),
-  })
-  .passthrough();
+const btcUtxoSchema = z.looseObject({
+  value: z.number().optional(),
+  status: z
+    .looseObject({
+      confirmed: z.boolean().optional(),
+    })
+    .optional(),
+});
 
 const btcUtxoArraySchema = z.array(btcUtxoSchema);
 
