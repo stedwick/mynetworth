@@ -20,9 +20,7 @@ export default function AssetCategorySection({
 
   return (
     <>
-      <tr
-        className="group bg-slate-50/80 dark:bg-white/5"
-      >
+      <tr className="group bg-slate-50/80 dark:bg-white/5">
         <th className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 dark:text-white/60">
           {category.label}
         </th>
@@ -46,10 +44,7 @@ export default function AssetCategorySection({
         </th>
       </tr>
       {category.items.map((item) => (
-        <AssetRow
-          key={item.id}
-          item={item}
-        />
+        <AssetRow key={item.id} item={item} />
       ))}
       <tr className="bg-slate-50/80 dark:bg-white/5">
         <td colSpan={5} className="px-4 py-3">
