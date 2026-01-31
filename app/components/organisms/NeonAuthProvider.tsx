@@ -18,6 +18,7 @@ export function NeonAuthProvider({ children }: NeonAuthProviderProps) {
       navigate={router.push}
       replace={router.replace}
       onSessionChange={() => router.refresh()}
+      redirectTo="/me"
       Link={Link}
     >
       {children}
