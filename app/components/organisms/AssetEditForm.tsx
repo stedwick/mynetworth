@@ -19,6 +19,7 @@ import {
 import type { AssetEditFormValues } from "@/app/lib/asset-form";
 import { AutocompleteInput } from "@/app/components/molecules/AutocompleteInput";
 import { useAutocompleteSearch } from "@/app/lib/asset-autocomplete";
+import { usePriceLookup } from "@/app/lib/asset-price";
 
 const fieldRootClassName = "flex flex-col gap-2";
 const fieldLabelClassName =
@@ -92,6 +93,12 @@ export default function AssetEditForm({
   const { matches: nameMatches, loading: nameLoading } = useAutocompleteSearch({
     endpoint: searchEndpoint,
     query: nameValue,
+  });
+  const { lookupPrice } = usePriceLookup({
+    kind: selectedKind,
+    onPriceResolved: (price) => {
+      setValue("price", String(price), selectionOptions);
+    },
   });
   const showAllErrors = submitCount > 0;
   const symbolPlaceholder =
@@ -220,65 +227,75 @@ export default function AssetEditForm({
               name="ticker"
               control={control}
               rules={{ required: "Ticker symbol is required." }}
-              render={({ field, fieldState }) => (
-                <Field.Root
-                  name={field.name}
-                  invalid={fieldState.invalid}
-                  touched={fieldState.isTouched || showAllErrors}
-                  dirty={fieldState.isDirty}
-                  className={fieldRootClassName}
-                >
-                  <Field.Label className={fieldLabelClassName}>
-                    Ticker Symbol
-                  </Field.Label>
-                  {isSearchableKind ? (
-                    <AutocompleteInput
-                      items={tickerMatches}
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                      onBlur={field.onBlur}
-                      inputRef={field.ref}
-                      placeholder={`e.g. ${symbolPlaceholder}`}
-                      required
-                      loading={tickerLoading}
-                      query={tickerValue}
-                      itemToStringValue={(item) => item.symbol}
-                      onSelect={(item) => {
-                        setValue("ticker", item.symbol, selectionOptions);
-                        setValue(
-                          "name",
-                          item.name ?? item.symbol,
-                          selectionOptions,
-                        );
-                      }}
-                    />
-                  ) : (
-                    <Field.Control
-                      ref={field.ref}
-                      className={fieldControlClassName}
-                      placeholder={`e.g. ${symbolPlaceholder}`}
-                      required
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      onBlur={field.onBlur}
-                    />
-                  )}
-                  {isWalletKind || isManualKind ? (
-                    <p className="text-xs text-slate-500 dark:text-white/50">
-                      Choose any symbol and name you want to be displayed.
-                    </p>
-                  ) : null}
-                  <Field.Error
-                    match={
-                      (fieldState.isTouched || showAllErrors) &&
-                      !!fieldState.error
-                    }
-                    className={fieldErrorClassName}
+              render={({ field, fieldState }) => {
+                const handleTickerBlur = () => {
+                  field.onBlur();
+                  if (isSearchableKind) {
+                    void lookupPrice(field.value ?? "");
+                  }
+                };
+
+                return (
+                  <Field.Root
+                    name={field.name}
+                    invalid={fieldState.invalid}
+                    touched={fieldState.isTouched || showAllErrors}
+                    dirty={fieldState.isDirty}
+                    className={fieldRootClassName}
                   >
-                    {fieldState.error?.message}
-                  </Field.Error>
-                </Field.Root>
-              )}
+                    <Field.Label className={fieldLabelClassName}>
+                      Ticker Symbol
+                    </Field.Label>
+                    {isSearchableKind ? (
+                      <AutocompleteInput
+                        items={tickerMatches}
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                        onBlur={handleTickerBlur}
+                        inputRef={field.ref}
+                        placeholder={`e.g. ${symbolPlaceholder}`}
+                        required
+                        loading={tickerLoading}
+                        query={tickerValue}
+                        itemToStringValue={(item) => item.symbol}
+                        onSelect={(item) => {
+                          setValue("ticker", item.symbol, selectionOptions);
+                          setValue(
+                            "name",
+                            item.name ?? item.symbol,
+                            selectionOptions,
+                          );
+                          void lookupPrice(item.symbol);
+                        }}
+                      />
+                    ) : (
+                      <Field.Control
+                        ref={field.ref}
+                        className={fieldControlClassName}
+                        placeholder={`e.g. ${symbolPlaceholder}`}
+                        required
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={handleTickerBlur}
+                      />
+                    )}
+                    {isWalletKind || isManualKind ? (
+                      <p className="text-xs text-slate-500 dark:text-white/50">
+                        Choose any symbol and name you want to be displayed.
+                      </p>
+                    ) : null}
+                    <Field.Error
+                      match={
+                        (fieldState.isTouched || showAllErrors) &&
+                        !!fieldState.error
+                      }
+                      className={fieldErrorClassName}
+                    >
+                      {fieldState.error?.message}
+                    </Field.Error>
+                  </Field.Root>
+                );
+              }}
             />
 
             <Controller
@@ -315,6 +332,7 @@ export default function AssetEditForm({
                           item.name ?? item.symbol,
                           selectionOptions,
                         );
+                        void lookupPrice(item.symbol);
                       }}
                     />
                   ) : (
