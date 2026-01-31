@@ -15,7 +15,7 @@ export default function MobileSidebarDialog({
     <div className="w-full md:hidden">
       <Dialog.Root>
         <Dialog.Trigger
-          className="flex w-full items-center justify-start gap-3 rounded-none bg-[var(--neon-secondary)] px-4 py-3 text-sm font-semibold text-[var(--neon-secondary-foreground)] shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
+          className="flex w-full items-center justify-start gap-3 rounded-none bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-white/70"
           aria-label={`${title} menu`}
         >
           <Image
