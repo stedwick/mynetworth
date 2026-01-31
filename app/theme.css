@@ -1,0 +1,40 @@
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --app-font-sans: var(--font-geist-sans, "Geist Sans", Arial, Helvetica, sans-serif);
+
+  --app-shell-bg: radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 55%);
+
+  --app-button-danger-bg: #f2a3a3;
+  --app-button-danger-fg: #1f1f1f;
+  --app-button-danger-border: #2a2a2a;
+  --app-button-danger-hover-bg: #e25b5b;
+  --app-button-danger-hover-fg: #ffffff;
+  --app-button-danger-hover-border: #2a2a2a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --app-shell-bg: radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 55%);
+    --app-button-danger-bg: var(--neon-destructive);
+    --app-button-danger-fg: #0a0a0a;
+    --app-button-danger-border: color-mix(in srgb, var(--neon-destructive) 70%, black 30%);
+    --app-button-danger-hover-bg: #f26a6a;
+    --app-button-danger-hover-fg: #ffffff;
+    --app-button-danger-hover-border: #b63b3b;
+  }
+}
+
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --app-shell-bg: radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 55%);
+  --app-button-danger-bg: var(--neon-destructive);
+  --app-button-danger-fg: #0a0a0a;
+  --app-button-danger-border: color-mix(in srgb, var(--neon-destructive) 70%, black 30%);
+  --app-button-danger-hover-bg: #f26a6a;
+  --app-button-danger-hover-fg: #ffffff;
+  --app-button-danger-hover-border: #b63b3b;
+}

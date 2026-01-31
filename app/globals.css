@@ -1,10 +1,6 @@
 @import "tailwindcss";
 @import "@neondatabase/auth/ui/tailwind";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "./theme.css";
 
 @theme inline {
   --color-background: var(--background);
@@ -13,17 +9,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--app-font-sans);
   position: relative;
 }
 
@@ -49,7 +38,8 @@ body {
 
 @layer components {
   .app-shell {
-    @apply min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)];
+    @apply min-h-screen;
+    background: var(--app-shell-bg);
   }
 
   .app-shell-inner {
@@ -102,26 +92,15 @@ body {
   }
 
   .app-button-danger {
-    background: #f2a3a3;
-    color: #1f1f1f;
-    border-color: #2a2a2a;
-  }
-
-  :root.dark .app-button-danger {
-    background: var(--neon-destructive);
-    color: #0a0a0a;
-    border-color: color-mix(in srgb, var(--neon-destructive) 70%, black 30%);
+    background: var(--app-button-danger-bg);
+    color: var(--app-button-danger-fg);
+    border-color: var(--app-button-danger-border);
   }
 
   .app-button-danger:hover {
-    background: #e25b5b;
-    color: #ffffff;
-  }
-
-  :root.dark .app-button-danger:hover {
-    background: #f26a6a;
-    color: #ffffff;
-    border-color: #b63b3b;
+    background: var(--app-button-danger-hover-bg);
+    color: var(--app-button-danger-hover-fg);
+    border-color: var(--app-button-danger-hover-border);
   }
 
   .scroll-hint {
