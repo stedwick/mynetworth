@@ -91,7 +91,7 @@ export default function AssetTable({
           Assets
         </h2>
         <p className="text-sm text-slate-500 dark:text-white/60">
-          Mock holdings across investment categories with USD pricing.
+          Holdings across investment categories with USD pricing.
         </p>
       </div>
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white/70 shadow-sm dark:border-white/10 dark:bg-white/5">
