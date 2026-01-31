@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEventHandler } from "react";
+import { type FormEventHandler } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@base-ui/react/button";
@@ -9,9 +9,16 @@ import { Field } from "@base-ui/react/field";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Select } from "@base-ui/react/select";
-import { Controller, type Control, useWatch } from "react-hook-form";
+import {
+  Controller,
+  type Control,
+  type UseFormSetValue,
+  useWatch,
+} from "react-hook-form";
 
 import type { AssetEditFormValues } from "@/app/lib/asset-form";
+import { AutocompleteInput } from "@/app/components/molecules/AutocompleteInput";
+import { useAutocompleteSearch } from "@/app/lib/asset-autocomplete";
 
 const fieldRootClassName = "flex flex-col gap-2";
 const fieldLabelClassName =
@@ -49,6 +56,7 @@ const kindOptions = [
 
 export default function AssetEditForm({
   control,
+  setValue,
   onSubmit,
   submitting,
   submitCount,
@@ -56,6 +64,7 @@ export default function AssetEditForm({
   onDelete,
 }: {
   control: Control<AssetEditFormValues>;
+  setValue: UseFormSetValue<AssetEditFormValues>;
   onSubmit: FormEventHandler<HTMLFormElement>;
   submitting: boolean;
   submitCount: number;
@@ -64,8 +73,26 @@ export default function AssetEditForm({
 }) {
   const router = useRouter();
   const selectedKind = useWatch({ control, name: "kind" });
+  const tickerValue = useWatch({ control, name: "ticker" }) ?? "";
+  const nameValue = useWatch({ control, name: "name" }) ?? "";
   const isManualKind = selectedKind === "manual";
   const isWalletKind = selectedKind === "wallet";
+  const isSearchableKind =
+    selectedKind === "stock" || selectedKind === "crypto";
+  const searchEndpoint = isSearchableKind
+    ? selectedKind === "stock"
+      ? "/api/stocks/search"
+      : "/api/crypto/search"
+    : null;
+  const { matches: tickerMatches, loading: tickerLoading } =
+    useAutocompleteSearch({
+      endpoint: searchEndpoint,
+      query: tickerValue,
+    });
+  const { matches: nameMatches, loading: nameLoading } = useAutocompleteSearch({
+    endpoint: searchEndpoint,
+    query: nameValue,
+  });
   const showAllErrors = submitCount > 0;
   const symbolPlaceholder =
     selectedKind === "wallet"
@@ -83,6 +110,11 @@ export default function AssetEditForm({
         : selectedKind === "crypto"
           ? "Bitcoin"
           : "Apple";
+  const selectionOptions = {
+    shouldDirty: true,
+    shouldTouch: true,
+    shouldValidate: true,
+  } as const;
 
   return (
     <form onSubmit={onSubmit} className="space-y-6" noValidate>
@@ -199,15 +231,38 @@ export default function AssetEditForm({
                   <Field.Label className={fieldLabelClassName}>
                     Ticker Symbol
                   </Field.Label>
-                  <Field.Control
-                    ref={field.ref}
-                    className={fieldControlClassName}
-                    placeholder={`e.g. ${symbolPlaceholder}`}
-                    required
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
+                  {isSearchableKind ? (
+                    <AutocompleteInput
+                      items={tickerMatches}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      inputRef={field.ref}
+                      placeholder={`e.g. ${symbolPlaceholder}`}
+                      required
+                      loading={tickerLoading}
+                      query={tickerValue}
+                      itemToStringValue={(item) => item.symbol}
+                      onSelect={(item) => {
+                        setValue("ticker", item.symbol, selectionOptions);
+                        setValue(
+                          "name",
+                          item.name ?? item.symbol,
+                          selectionOptions,
+                        );
+                      }}
+                    />
+                  ) : (
+                    <Field.Control
+                      ref={field.ref}
+                      className={fieldControlClassName}
+                      placeholder={`e.g. ${symbolPlaceholder}`}
+                      required
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  )}
                   {isWalletKind || isManualKind ? (
                     <p className="text-xs text-slate-500 dark:text-white/50">
                       Choose any symbol and name you want to be displayed.
@@ -241,15 +296,38 @@ export default function AssetEditForm({
                   <Field.Label className={fieldLabelClassName}>
                     Asset name
                   </Field.Label>
-                  <Field.Control
-                    ref={field.ref}
-                    className={fieldControlClassName}
-                    placeholder={`e.g. ${namePlaceholder}`}
-                    required
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
+                  {isSearchableKind ? (
+                    <AutocompleteInput
+                      items={nameMatches}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      inputRef={field.ref}
+                      placeholder={`e.g. ${namePlaceholder}`}
+                      required
+                      loading={nameLoading}
+                      query={nameValue}
+                      itemToStringValue={(item) => item.name ?? item.symbol}
+                      onSelect={(item) => {
+                        setValue("ticker", item.symbol, selectionOptions);
+                        setValue(
+                          "name",
+                          item.name ?? item.symbol,
+                          selectionOptions,
+                        );
+                      }}
+                    />
+                  ) : (
+                    <Field.Control
+                      ref={field.ref}
+                      className={fieldControlClassName}
+                      placeholder={`e.g. ${namePlaceholder}`}
+                      required
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  )}
                   <Field.Error
                     match={
                       (fieldState.isTouched || showAllErrors) &&
@@ -452,7 +530,7 @@ export default function AssetEditForm({
                   className={fieldRootClassName}
                 >
                   <Field.Label className={fieldLabelClassName}>
-                    Order
+                    Sort order
                   </Field.Label>
                   <Field.Control
                     ref={field.ref}
