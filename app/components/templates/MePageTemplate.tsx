@@ -1,15 +1,9 @@
-import { computeNetWorthSummary, type AssetCategory } from "@/app/lib/networth";
+import {
+  computeNetWorthSummary,
+  formatUsd,
+  type AssetCategory,
+} from "@/app/lib/networth";
 import AssetTable from "@/app/components/organisms/AssetTable";
-
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
-
-function formatCurrency(value: number) {
-  return currencyFormatter.format(value);
-}
 
 export default function MePageTemplate({
   categories,
@@ -25,11 +19,10 @@ export default function MePageTemplate({
           Total net worth
         </p>
         <h1 className="text-3xl font-semibold text-slate-900 dark:text-white sm:text-4xl">
-          {formatCurrency(netWorth)}
+          {formatUsd(netWorth)}
         </h1>
         <p className="text-sm text-slate-500 dark:text-white/60">
-          Mock snapshot based on your portfolio, retirement, property, and cash
-          accounts.
+          Refreshes every hour.
         </p>
       </section>
 
