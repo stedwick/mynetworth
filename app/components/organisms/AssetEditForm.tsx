@@ -481,41 +481,41 @@ export default function AssetEditForm({
           </>
         ) : null}
       </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button
-              type="button"
-              onClick={() => router.back()}
-              className="app-button app-button-cancel w-full sm:w-auto"
-            >
-              <Image
-                src="/icons8/arrow-left.png"
-                alt=""
-                aria-hidden="true"
-                className="icon-light-dark h-4 w-4"
-                width={16}
-                height={16}
-                loading="lazy"
-              />
-              Go back
-            </Button>
-            {showDelete ? (
-              <Dialog.Root>
-                <Dialog.Trigger
-                  className="app-button app-button-danger w-full sm:w-auto"
-                  type="button"
-                >
-                  <Image
-                    src="/icons8/trash.png"
-                    alt=""
-                    aria-hidden="true"
-                    className="icon-light-dark-strong h-4 w-4"
-                    width={16}
-                    height={16}
-                    loading="lazy"
-                  />
-                  Delete asset
-                </Dialog.Trigger>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button
+            type="button"
+            onClick={() => router.back()}
+            className="app-button app-button-cancel w-full sm:w-auto"
+          >
+            <Image
+              src="/icons8/arrow-left.png"
+              alt=""
+              aria-hidden="true"
+              className="icon-light-dark h-4 w-4"
+              width={16}
+              height={16}
+              loading="lazy"
+            />
+            Go back
+          </Button>
+          {showDelete ? (
+            <Dialog.Root>
+              <Dialog.Trigger
+                className="app-button app-button-danger w-full sm:w-auto"
+                type="button"
+              >
+                <Image
+                  src="/icons8/trash.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="icon-light-dark-strong h-4 w-4"
+                  width={16}
+                  height={16}
+                  loading="lazy"
+                />
+                Delete asset
+              </Dialog.Trigger>
               <Dialog.Portal>
                 <Dialog.Backdrop className="fixed inset-0 z-40 bg-slate-950/45 transition-opacity duration-200 data-starting-style:opacity-0 data-ending-style:opacity-0" />
                 <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(26rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200/70 bg-white/95 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-950/95">
