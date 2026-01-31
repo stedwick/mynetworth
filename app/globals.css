@@ -49,7 +49,7 @@ body {
 
 @layer components {
   .app-shell {
-    @apply min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)] dark:bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)];
+    @apply min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%)];
   }
 
   .app-shell-inner {
@@ -128,7 +128,10 @@ body {
     opacity: 0;
     transform: translateX(-2px);
     visibility: hidden;
-    transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+    transition:
+      opacity 200ms ease,
+      transform 200ms ease,
+      visibility 200ms ease;
     pointer-events: none;
   }
 
@@ -151,5 +154,4 @@ body {
     background: transparent;
     box-shadow: none;
   }
-
 }
