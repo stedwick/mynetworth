@@ -10,6 +10,7 @@ import {
 } from "@/app/lib/asset-form";
 
 export default function AssetEditPage() {
+  const categoryNames: string[] = [];
   const { control, handleSubmit, formState, setValue } =
     useForm<AssetEditFormValues>({
       defaultValues: assetEditDefaultValues,
@@ -30,6 +31,7 @@ export default function AssetEditPage() {
           submitting={formState.isSubmitting}
           submitCount={formState.submitCount}
           showDelete
+          categoryNames={categoryNames}
         />
       }
     />

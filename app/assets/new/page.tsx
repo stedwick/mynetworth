@@ -1,36 +1,17 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useForm } from "react-hook-form";
+import NewAssetForm from "@/app/assets/new/NewAssetForm";
+import { getCategoryNamesForUser } from "@/app/lib/services/categories.service";
+import { authServer } from "@/lib/auth/server";
 
-import AssetEditForm from "@/app/components/organisms/AssetEditForm";
-import AssetEditPageTemplate from "@/app/components/templates/AssetEditPageTemplate";
-import {
-  assetEditDefaultValues,
-  type AssetEditFormValues,
-} from "@/app/lib/asset-form";
+export default async function NewAssetPage() {
+  const { data } = await authServer.getSession();
 
-export default function NewAssetPage() {
-  const { control, handleSubmit, formState, setValue } =
-    useForm<AssetEditFormValues>({
-      defaultValues: assetEditDefaultValues,
-      mode: "onBlur",
-    });
+  if (!data?.user) {
+    redirect("/auth/sign-in");
+  }
 
-  const onSubmit = handleSubmit(() => {});
+  const categoryNames = await getCategoryNamesForUser(data.user.id);
 
-  return (
-    <AssetEditPageTemplate
-      title="New asset"
-      description="Add a new asset to your portfolio."
-      form={
-        <AssetEditForm
-          control={control}
-          setValue={setValue}
-          onSubmit={onSubmit}
-          submitting={formState.isSubmitting}
-          submitCount={formState.submitCount}
-        />
-      }
-    />
-  );
+  return <NewAssetForm categoryNames={categoryNames} />;
 }

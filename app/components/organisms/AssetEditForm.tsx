@@ -38,18 +38,10 @@ const radioIndicatorClassName =
 const radioOptionClassName =
   "flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white";
 
-export type CategoryOption = {
+type CategoryOption = {
   value: string;
   label: string;
 };
-
-const defaultCategoryOptions: CategoryOption[] = [
-  { value: "stocks", label: "Stocks" },
-  { value: "crypto", label: "Crypto" },
-  { value: "properties", label: "Properties" },
-  { value: "retirement", label: "Retirement" },
-  { value: "cash", label: "Cash" },
-];
 
 const kindOptions = [
   { value: "stock", label: "Stock" },
@@ -66,7 +58,7 @@ export default function AssetEditForm({
   submitCount,
   showDelete = false,
   onDelete,
-  categoryOptions = defaultCategoryOptions,
+  categoryNames,
 }: {
   control: Control<AssetEditFormValues>;
   setValue: UseFormSetValue<AssetEditFormValues>;
@@ -75,9 +67,13 @@ export default function AssetEditForm({
   submitCount: number;
   showDelete?: boolean;
   onDelete?: () => void;
-  categoryOptions?: CategoryOption[];
+  categoryNames: string[];
 }) {
   const router = useRouter();
+  const categoryOptions: CategoryOption[] = categoryNames.map((name) => ({
+    value: name,
+    label: name,
+  }));
   const selectedKind = useWatch({ control, name: "kind" });
   const tickerValue = useWatch({ control, name: "ticker" }) ?? "";
   const nameValue = useWatch({ control, name: "name" }) ?? "";

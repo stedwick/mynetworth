@@ -36,6 +36,8 @@
 - Keep SQL in server-only service modules (pages should call services).
 - Use Suspense around server components that call auth/database to avoid blocking-route warnings.
 - Kysely codegen outputs to `app/lib/db-types.ts` (not `.d.ts`) so it can be imported by Next/Turbopack.
+- Main methods should live in `app/lib/services/*`; helper logic belongs in `app/lib/*` and is called by the services.
+- Avoid helper methods for trivial calculations; keep ultra-simple derived values inline unless they’re reused across pages (then put them in services).
 
 ## Testing Guidelines
 

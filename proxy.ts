@@ -5,5 +5,17 @@ export default neonAuthMiddleware({
 });
 
 export const config = {
-  matcher: ["/account/:path*", "/action", "/api/:path*", "/me/:path*"],
+  matcher: [
+    "/account/:path*",
+    "/action",
+    "/api/crypto/:path*",
+    "/api/stocks/:path*",
+    "/api/secure-api-route",
+    "/api/version",
+    "/assets/:path*",
+    "/categories/:path*",
+    "/client-rendered-page",
+    "/me/:path*",
+    "/server-rendered-page",
+  ],
 };
