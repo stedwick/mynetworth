@@ -18,6 +18,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: ["migrations/**/*.ts", "scripts/migrate.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

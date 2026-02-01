@@ -9,12 +9,16 @@
     "lint": "eslint",
     "format": "prettier --write .",
     "test": "bun test",
-    "check": "bun run lint && bun run format && bun run test && bun run build"
+    "check": "bun run lint && bun run format && bun run test && bun run build",
+    "migrate": "bun run scripts/migrate.ts",
+    "migrate:latest": "bun run scripts/migrate.ts latest",
+    "migrate:down": "bun run scripts/migrate.ts down"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
     "@neondatabase/auth": "^0.1.0-beta.21",
     "@neondatabase/serverless": "^1.0.2",
+    "kysely": "^0.28.11",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
