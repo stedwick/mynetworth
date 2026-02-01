@@ -37,6 +37,7 @@ export interface Assets {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
   name: string;
+  price_updated_at: Generated<Timestamp>;
   quantity: Generated<Numeric>;
   sort_order: Generated<number>;
   ticker_symbol: string;
