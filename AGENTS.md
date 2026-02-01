@@ -33,6 +33,9 @@
 - Follow Next.js file conventions (`page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`).
 - Prefer shared formatters in `app/lib/networth.ts` (e.g., `formatUsd`, `formatQuantity`) instead of re-creating formatters in components.
 - Prefer `SELECT *` in service queries for ease of use; if you select a subset of columns, narrow the type at the query site.
+- Keep SQL in server-only service modules (pages should call services).
+- Use Suspense around server components that call auth/database to avoid blocking-route warnings.
+- Kysely codegen outputs to `app/lib/db-types.ts` (not `.d.ts`) so it can be imported by Next/Turbopack.
 
 ## Testing Guidelines
 

@@ -19,6 +19,7 @@ Open http://localhost:3000 in your browser.
 bun run lint
 bun run test
 bun run format
+bun run typecheck
 bun run check
 ```
 
@@ -29,6 +30,9 @@ bun run check
 ## Data Access Notes
 
 - Prefer `SELECT *` in service queries for ease of use; if you select a subset of columns, narrow the type at the query site.
+- Keep SQL in server-only service modules (pages call services).
+- Use Suspense around server components that call auth/database to avoid blocking-route warnings.
+- Kysely codegen outputs to `app/lib/db-types.ts` (not `.d.ts`) so it can be imported by Next/Turbopack.
 
 ## Environment Variables
 
