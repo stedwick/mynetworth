@@ -1,14 +1,18 @@
+import { neon } from "@neondatabase/serverless";
+
 import { mockCategories } from "../app/demo/mock-categories";
 import { getInitialPriceUpdatedAt } from "../app/lib/asset-price-updated-at";
-import { sql } from "../app/lib/db";
 import { buildDemoSeedData } from "../app/lib/demo-seed";
 
 const DEFAULT_USER_ID = "ec510dfe-fce2-42f2-b588-fea62eec6696";
 const userId = process.argv[2] ?? DEFAULT_USER_ID;
+const databaseUrl = process.env.DATABASE_URL;
 
-if (!process.env.DATABASE_URL) {
+if (!databaseUrl) {
   throw new Error("DATABASE_URL is required to seed demo categories.");
 }
+
+const sql = neon(databaseUrl);
 
 const { categories, assets } = buildDemoSeedData(mockCategories);
 const categoryIdByName = new Map<string, string>();
