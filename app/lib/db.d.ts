@@ -36,6 +36,7 @@ export interface Assets {
   category_id: string;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
+  kind: Generated<string>;
   name: string;
   price_updated_at: Generated<Timestamp>;
   quantity: Generated<Numeric>;

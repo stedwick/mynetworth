@@ -31,6 +31,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
     .addColumn("category_id", "uuid", (col) => col.notNull())
     .addColumn("name", "text", (col) => col.notNull())
+    .addColumn("kind", "text", (col) => col.notNull().defaultTo("manual"))
     .addColumn("ticker_symbol", "text", (col) => col.notNull())
     .addColumn("quantity", "numeric", (col) => col.notNull().defaultTo(1))
     .addColumn("value_cents", "bigint", (col) => col.notNull().defaultTo(100))
