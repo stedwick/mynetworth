@@ -34,9 +34,7 @@ export async function createCategory(
   try {
     await createCategoryForUser(data.user.id, normalized);
   } catch (error) {
-    if (
-      isUniqueConstraintViolation(error, "categories_user_id_name_unique")
-    ) {
+    if (isUniqueConstraintViolation(error, "categories_user_id_name_unique")) {
       return { error: "Category name already exists." };
     }
     throw error;
