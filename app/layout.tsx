@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import RouteRefreshTrigger from "@/app/components/atoms/RouteRefreshTrigger";
 import { NeonAuthProvider } from "@/app/components/organisms/NeonAuthProvider";
 import AppShellLayout from "@/app/components/templates/AppShellLayout";
 import "./globals.css";
@@ -31,6 +33,9 @@ export default function RootLayout({
       >
         <div className="root">
           <NeonAuthProvider>
+            <Suspense fallback={null}>
+              <RouteRefreshTrigger />
+            </Suspense>
             <AppShellLayout>{children}</AppShellLayout>
           </NeonAuthProvider>
         </div>

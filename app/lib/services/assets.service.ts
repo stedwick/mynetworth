@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "@/app/lib/db";
 import { resolveCategoryId } from "@/app/lib/assets";
 import type { AssetFormRecord } from "@/app/lib/asset-form";
+import { getInitialPriceUpdatedAt } from "@/app/lib/asset-price-updated-at";
 
 export type CreateAssetInput = {
   name: string;
@@ -20,6 +21,7 @@ export async function createAssetForUser(
   input: CreateAssetInput,
 ): Promise<void> {
   const categoryId = await resolveCategoryId(userId, input.categoryInput);
+  const priceUpdatedAt = getInitialPriceUpdatedAt(input.kind, new Date());
 
   await sql`
     INSERT INTO assets (
@@ -31,6 +33,7 @@ export async function createAssetForUser(
       quantity,
       value_cents,
       wallet_address,
+      price_updated_at,
       sort_order
     )
     VALUES (
@@ -42,6 +45,7 @@ export async function createAssetForUser(
       ${input.quantity},
       ${input.valueCents},
       ${input.walletAddress},
+      ${priceUpdatedAt},
       ${input.sortOrder}
     )
   `;

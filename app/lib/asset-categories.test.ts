@@ -81,6 +81,21 @@ const assets: AssetRow[] = [
     price_updated_at: now,
     user_id: "user-1",
   },
+  {
+    id: "a4",
+    category_id: "c2",
+    name: "BTC Wallet",
+    kind: "wallet",
+    ticker_symbol: "btc",
+    quantity: "1",
+    value_cents: "500",
+    wallet_address: "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4",
+    sort_order: 2,
+    created_at: now,
+    updated_at: now,
+    price_updated_at: now,
+    user_id: "user-1",
+  },
 ];
 
 describe("buildAssetCategories", () => {
@@ -100,6 +115,12 @@ describe("buildAssetCategories", () => {
 
     const normalizedItem = result[1].items[0];
     expect(normalizedItem.kind).toBe("manual");
+
+    const btcWalletItem = result[1].items[1];
+    if (btcWalletItem.kind !== "wallet") {
+      throw new Error("Expected wallet item");
+    }
+    expect(btcWalletItem.walletNetwork).toBe("bitcoin");
 
     expect(result[2].items).toEqual([]);
   });

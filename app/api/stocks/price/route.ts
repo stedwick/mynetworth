@@ -1,20 +1,5 @@
-import { cacheLife } from "next/cache";
-import YahooFinance from "yahoo-finance2";
-import {
-  mapYahooQuotesToPrices,
-  parseSymbolsParam,
-  parseYahooQuotes,
-} from "./utils";
-
-const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
-const getYahooQuotes = async (symbols: string[]) => {
-  "use cache";
-  cacheLife("hours");
-
-  console.info("[stocks/price] Fetching Yahoo quotes for:", symbols.join(","));
-  const result = await yahooFinance.quote(symbols, { return: "array" });
-  return parseYahooQuotes(result);
-};
+import { getYahooQuotes } from "./service";
+import { mapYahooQuotesToPrices, parseSymbolsParam } from "./utils";
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);

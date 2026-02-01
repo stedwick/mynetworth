@@ -3,6 +3,7 @@ import type { Selectable } from "kysely";
 
 import type { DB } from "@/app/lib/db-types";
 import { parseNumberLike } from "@/app/lib/number-utils";
+import { compareStringsCaseInsensitive } from "@/app/lib/string-utils";
 import {
   isBtcAddress,
   isEthAddress,
@@ -35,12 +36,12 @@ const inferWalletNetwork = (
       return "evm";
     }
 
-    if (isSolAddress(walletAddress)) {
-      return "solana";
-    }
-
     if (isBtcAddress(walletAddress)) {
       return "bitcoin";
+    }
+
+    if (isSolAddress(walletAddress)) {
+      return "solana";
     }
   }
 
@@ -60,9 +61,6 @@ const inferWalletNetwork = (
 const compareSort = (a: number | string | null, b: number | string | null) => {
   return parseNumberLike(a, 1) - parseNumberLike(b, 1);
 };
-
-const compareByName = (a: string, b: string) =>
-  a.localeCompare(b, "en", { sensitivity: "base" });
 
 const centsToUsd = (value: number | string | bigint | null): number => {
   const cents = parseNumberLike(value, 0);
@@ -99,7 +97,7 @@ export const buildAssetCategories = (
   const sortedAssets = [...assets].sort((a, b) => {
     const sortDiff = compareSort(a.sort_order, b.sort_order);
     if (sortDiff !== 0) return sortDiff;
-    return compareByName(a.name, b.name);
+    return compareStringsCaseInsensitive(a.name, b.name);
   });
 
   for (const asset of sortedAssets) {
@@ -111,7 +109,7 @@ export const buildAssetCategories = (
   const sortedCategories = [...categories].sort((a, b) => {
     const sortDiff = compareSort(a.sort_order, b.sort_order);
     if (sortDiff !== 0) return sortDiff;
-    return compareByName(a.name, b.name);
+    return compareStringsCaseInsensitive(a.name, b.name);
   });
 
   return sortedCategories.map((category) => ({
