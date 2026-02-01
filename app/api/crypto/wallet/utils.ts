@@ -1,13 +1,20 @@
 import { z } from "zod";
 
+const mobulaWalletBalanceSchema = z.looseObject({
+  total_wallet_balance: z.number().optional(),
+  balance_usd: z.number().optional(),
+});
+
 const mobulaWalletPortfolioSchema = z.looseObject({
-  data: z.looseObject({
-    total_wallet_balance: z.number().optional(),
-    balance_usd: z.number().optional(),
-  }),
+  data: mobulaWalletBalanceSchema,
+});
+
+const mobulaWalletBalancesSchema = z.looseObject({
+  data: z.unknown(),
 });
 
 export type MobulaWalletPortfolio = z.infer<typeof mobulaWalletPortfolioSchema>;
+export type MobulaWalletBalances = z.infer<typeof mobulaWalletBalancesSchema>;
 
 export const parseMobulaWalletPortfolio = (
   data: unknown,
@@ -15,16 +22,150 @@ export const parseMobulaWalletPortfolio = (
   return mobulaWalletPortfolioSchema.parse(data);
 };
 
-export const extractWalletBalanceUsd = (
-  payload: MobulaWalletPortfolio,
-): number => {
-  const balance = payload.data.total_wallet_balance ?? payload.data.balance_usd;
+export const parseMobulaWalletBalances = (
+  data: unknown,
+): MobulaWalletBalances => {
+  return mobulaWalletBalancesSchema.parse(data);
+};
+
+const extractWalletBalanceValue = (data: {
+  total_wallet_balance?: number;
+  balance_usd?: number;
+}): number => {
+  const balance = data.total_wallet_balance ?? data.balance_usd;
 
   if (typeof balance !== "number" || !Number.isFinite(balance)) {
     throw new Error("Wallet balance missing");
   }
 
   return balance;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+export const extractWalletBalanceUsd = (
+  payload: MobulaWalletPortfolio,
+): number => {
+  return extractWalletBalanceValue(payload.data);
+};
+
+export const mapMobulaWalletBalancesToUsd = (
+  payload: MobulaWalletBalances,
+): Record<string, number> => {
+  const balances: Record<string, number> = {};
+  const data = payload.data;
+
+  if (Array.isArray(data)) {
+    for (const entry of data) {
+      if (!isRecord(entry)) continue;
+      const wallet =
+        typeof entry.wallet === "string"
+          ? entry.wallet
+          : typeof entry.address === "string"
+            ? entry.address
+            : "";
+      const address = wallet.trim();
+      if (!address) continue;
+      balances[address] = extractWalletBalanceValue(entry);
+    }
+
+    return balances;
+  }
+
+  if (isRecord(data)) {
+    const singleWallet =
+      typeof data.wallet === "string"
+        ? data.wallet
+        : typeof data.address === "string"
+          ? data.address
+          : null;
+
+    if (singleWallet) {
+      const trimmed = singleWallet.trim();
+      if (trimmed) {
+        try {
+          balances[trimmed] = extractWalletBalanceValue(data);
+          return balances;
+        } catch {
+          // Fall through to other parsing strategies.
+        }
+      }
+    }
+
+    const balancesRecord = isRecord(data.balances) ? data.balances : null;
+    if (balancesRecord) {
+      for (const [address, entry] of Object.entries(balancesRecord)) {
+        const trimmed = address.trim();
+        if (!trimmed) continue;
+        if (typeof entry === "number" && Number.isFinite(entry)) {
+          balances[trimmed] = entry;
+          continue;
+        }
+        if (isRecord(entry)) {
+          balances[trimmed] = extractWalletBalanceValue(entry);
+        }
+      }
+    }
+
+    const entries = Array.isArray(data.wallets)
+      ? data.wallets
+      : Array.isArray(data.assets)
+        ? data.assets
+        : null;
+
+    if (entries) {
+      if (
+        entries.length === 1 &&
+        typeof entries[0] === "string" &&
+        (typeof data.total_wallet_balance === "number" ||
+          typeof data.balance_usd === "number")
+      ) {
+        const trimmed = entries[0].trim();
+        if (trimmed) {
+          balances[trimmed] = extractWalletBalanceValue(data);
+          return balances;
+        }
+      }
+
+      for (const entry of entries) {
+        if (typeof entry === "string") {
+          const trimmed = entry.trim();
+          if (!trimmed) continue;
+          if (balancesRecord && trimmed in balancesRecord) {
+            continue;
+          }
+        } else if (isRecord(entry)) {
+          const wallet =
+            typeof entry.wallet === "string"
+              ? entry.wallet
+              : typeof entry.address === "string"
+                ? entry.address
+                : "";
+          const address = wallet.trim();
+          if (!address) continue;
+          balances[address] = extractWalletBalanceValue(entry);
+        }
+      }
+    }
+
+    for (const [address, entry] of Object.entries(data)) {
+      if (!isSupportedWalletAddress(address)) continue;
+      if (address in balances) continue;
+      if (typeof entry === "number" && Number.isFinite(entry)) {
+        balances[address] = entry;
+        continue;
+      }
+      if (isRecord(entry)) {
+        balances[address] = extractWalletBalanceValue(entry);
+      }
+    }
+
+    return balances;
+  }
+
+  return balances;
 };
 
 export const parseAddressParam = (param: string | null): string | null => {

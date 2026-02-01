@@ -6,6 +6,7 @@ import {
   isEthAddress,
   isSolAddress,
   isSupportedWalletAddress,
+  mapMobulaWalletBalancesToUsd,
   mapWalletBalanceToResponse,
   parseBtcUtxos,
   parseAddressParam,
@@ -128,6 +129,80 @@ describe("extractWalletBalanceUsd", () => {
 
   it("throws when no balance field is present", () => {
     expect(() => extractWalletBalanceUsd({ data: {} })).toThrow();
+  });
+});
+
+describe("mapMobulaWalletBalancesToUsd", () => {
+  it("maps array or record payloads to address balances", () => {
+    const result = mapMobulaWalletBalancesToUsd({
+      data: [
+        {
+          wallet: "0xabc",
+          total_wallet_balance: 12.34,
+        },
+        {
+          address: "So11111111111111111111111111111111111111112",
+          balance_usd: 56.78,
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      "0xabc": 12.34,
+      So11111111111111111111111111111111111111112: 56.78,
+    });
+
+    const recordResult = mapMobulaWalletBalancesToUsd({
+      data: {
+        "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": { balance_usd: 90.12 },
+      },
+    });
+
+    expect(recordResult).toEqual({
+      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": 90.12,
+    });
+  });
+
+  it("maps wallet list payloads to address balances", () => {
+    const result = mapMobulaWalletBalancesToUsd({
+      data: {
+        wallets: [
+          {
+            wallet: "0xfeed",
+            total_wallet_balance: 44.55,
+          },
+        ],
+      },
+    });
+
+    expect(result).toEqual({ "0xfeed": 44.55 });
+  });
+
+  it("maps wallet strings with balances record payloads", () => {
+    const result = mapMobulaWalletBalancesToUsd({
+      data: {
+        wallets: ["0xabc"],
+        balances: {
+          "0xabc": { balance_usd: 12.34 },
+        },
+        balances_length: 1,
+      },
+    });
+
+    expect(result).toEqual({ "0xabc": 12.34 });
+  });
+
+  it("maps a single wallet with total balance at the root", () => {
+    const result = mapMobulaWalletBalancesToUsd({
+      data: {
+        wallets: ["0x396343362be2A4dA1cE0C1C210945346fb82Aa49"],
+        total_wallet_balance: 99.99,
+      },
+    });
+
+    expect(result).toEqual({
+      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": 99.99,
+    });
   });
 });
 
