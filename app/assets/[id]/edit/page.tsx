@@ -1,39 +1,37 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useForm } from "react-hook-form";
+import EditAssetForm from "@/app/assets/[id]/edit/EditAssetForm";
+import { assetFormValuesFromRecord } from "@/app/lib/asset-form";
+import { getAssetForUser } from "@/app/lib/services/assets.service";
+import { getCategoryNamesForUser } from "@/app/lib/services/categories.service";
+import { authServer } from "@/lib/auth/server";
 
-import AssetEditForm from "@/app/components/organisms/AssetEditForm";
-import AssetEditPageTemplate from "@/app/components/templates/AssetEditPageTemplate";
-import {
-  assetEditDefaultValues,
-  type AssetEditFormValues,
-} from "@/app/lib/asset-form";
+export default async function AssetEditPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { data } = await authServer.getSession();
 
-export default function AssetEditPage() {
-  const categoryNames: string[] = [];
-  const { control, handleSubmit, formState, setValue } =
-    useForm<AssetEditFormValues>({
-      defaultValues: assetEditDefaultValues,
-      mode: "onBlur",
-    });
+  if (!data?.user) {
+    redirect("/auth/sign-in");
+  }
 
-  const onSubmit = handleSubmit(() => {});
+  const asset = await getAssetForUser(data.user.id, id);
+
+  if (!asset) {
+    redirect("/me");
+  }
+
+  const categoryNames = await getCategoryNamesForUser(data.user.id);
+  const initialValues = assetFormValuesFromRecord(asset);
 
   return (
-    <AssetEditPageTemplate
-      title="Edit asset"
-      description="Update asset details and keep your net worth snapshots accurate."
-      form={
-        <AssetEditForm
-          control={control}
-          setValue={setValue}
-          onSubmit={onSubmit}
-          submitting={formState.isSubmitting}
-          submitCount={formState.submitCount}
-          showDelete
-          categoryNames={categoryNames}
-        />
-      }
+    <EditAssetForm
+      assetId={id}
+      categoryNames={categoryNames}
+      initialValues={initialValues}
     />
   );
 }

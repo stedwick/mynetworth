@@ -13,6 +13,7 @@ export default function AssetCategorySection({
 }: {
   category: AssetCategory;
 }) {
+  const hasItems = category.items.length > 0;
   const total = category.items.reduce(
     (sum, item) => sum + getAssetTotal(item),
     0,
@@ -46,9 +47,19 @@ export default function AssetCategorySection({
           </div>
         </th>
       </tr>
-      {category.items.map((item) => (
-        <AssetRow key={item.id} item={item} />
-      ))}
+      {hasItems ? (
+        category.items.map((item) => <AssetRow key={item.id} item={item} />)
+      ) : (
+        <tr>
+          <td
+            colSpan={6}
+            className="px-6 py-6 text-left text-sm text-slate-500 dark:text-white/60 sm:text-center"
+          >
+            No assets in {category.label} yet. Add your first asset to start
+            tracking.
+          </td>
+        </tr>
+      )}
       <tr className="bg-slate-50/80 dark:bg-white/5">
         <td colSpan={5} className="px-4 py-3">
           <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-700 dark:text-white/70">

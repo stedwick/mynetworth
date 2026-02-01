@@ -8,7 +8,7 @@ const autocompletePopupClassName =
   "min-w-[var(--anchor-width)] rounded-xl border border-slate-200/70 bg-white/95 p-1 text-sm text-slate-900 shadow-lg outline-none dark:border-white/10 dark:bg-neutral-950/95 dark:text-white";
 const autocompleteListClassName = "max-h-64 overflow-y-auto py-1";
 const autocompleteItemClassName =
-  "flex cursor-default items-center justify-between gap-3 rounded-lg px-3 py-2 outline-none transition data-[highlighted]:bg-slate-900 data-[highlighted]:text-white dark:data-[highlighted]:bg-white dark:data-[highlighted]:text-slate-900";
+  "group flex cursor-default items-center justify-between gap-3 rounded-lg px-3 py-2 outline-none transition data-[highlighted]:bg-slate-900 data-[highlighted]:text-white dark:data-[highlighted]:bg-white dark:data-[highlighted]:text-slate-900";
 const autocompleteStatusClassName =
   "px-3 py-2 text-xs text-slate-500 dark:text-white/50 empty:hidden";
 const autocompleteEmptyClassName =
@@ -86,7 +86,7 @@ export function AutocompleteInput({
                 >
                   <span className="text-sm font-semibold">{item.symbol}</span>
                   {item.name ? (
-                    <span className="truncate text-xs text-slate-500 dark:text-white/50">
+                    <span className="truncate text-xs text-slate-500 dark:text-white/50 group-data-highlighted:text-white dark:group-data-highlighted:text-slate-600">
                       {item.name}
                     </span>
                   ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 export const DEFAULT_PRICE_FALLBACK = 1;
 
@@ -32,8 +32,9 @@ export const usePriceLookup = ({
 }: {
   kind: string | null | undefined;
   onPriceResolved: (price: number) => void;
-}): { lookupPrice: (symbol: string) => Promise<void> } => {
+}): { lookupPrice: (symbol: string) => Promise<void>; loading: boolean } => {
   const endpoint = getPriceEndpoint(kind);
+  const [pending, setPending] = useState(0);
 
   const lookupPrice = useCallback(
     async (symbol: string) => {
@@ -41,6 +42,7 @@ export const usePriceLookup = ({
       const normalizedSymbol = symbol.trim().toUpperCase();
       if (!normalizedSymbol) return;
 
+      setPending((current) => current + 1);
       try {
         const response = await fetch(
           `${endpoint}?symbols=${encodeURIComponent(normalizedSymbol)}`,
@@ -55,10 +57,12 @@ export const usePriceLookup = ({
         onPriceResolved(getPriceFromMap(data, normalizedSymbol));
       } catch (_error) {
         onPriceResolved(DEFAULT_PRICE_FALLBACK);
+      } finally {
+        setPending((current) => Math.max(current - 1, 0));
       }
     },
     [endpoint, onPriceResolved],
   );
 
-  return { lookupPrice };
+  return { lookupPrice, loading: pending > 0 };
 };

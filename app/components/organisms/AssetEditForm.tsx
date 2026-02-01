@@ -95,7 +95,7 @@ export default function AssetEditForm({
     endpoint: searchEndpoint,
     query: nameValue,
   });
-  const { lookupPrice } = usePriceLookup({
+  const { lookupPrice, loading: priceLoading } = usePriceLookup({
     kind: selectedKind,
     onPriceResolved: (price) => {
       setValue("price", String(price), selectionOptions);
@@ -124,8 +124,20 @@ export default function AssetEditForm({
     shouldValidate: true,
   } as const;
 
+  const isSubmitting = submitting || priceLoading;
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form
+      onSubmit={(event) => {
+        if (priceLoading) {
+          event.preventDefault();
+          return;
+        }
+        onSubmit(event);
+      }}
+      className="space-y-6"
+      noValidate
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-white/50">
         All fields are required
       </p>
@@ -669,7 +681,7 @@ export default function AssetEditForm({
         <button
           type="submit"
           className="app-button app-button-primary w-full sm:w-auto"
-          disabled={submitting}
+          disabled={isSubmitting}
         >
           <Image
             src="/icons8/check.png"
