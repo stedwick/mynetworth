@@ -38,7 +38,10 @@ export const toNumericString = (value: unknown, fallback: string): string => {
   return parsed === null ? fallback : String(parsed);
 };
 
-export const centsToPriceString = (value: unknown, fallback: string): string => {
+export const centsToPriceString = (
+  value: unknown,
+  fallback: string,
+): string => {
   const cents = toNumber(value);
   if (cents === null) return fallback;
   return String(cents / 100);
