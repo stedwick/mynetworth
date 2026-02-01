@@ -34,6 +34,9 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("ticker_symbol", "text", (col) => col.notNull())
     .addColumn("quantity", "numeric", (col) => col.notNull().defaultTo(1))
     .addColumn("value_cents", "bigint", (col) => col.notNull().defaultTo(100))
+    .addColumn("price_updated_at", "timestamptz", (col) =>
+      col.notNull().defaultTo(sql`now()`),
+    )
     .addColumn("wallet_address", "text")
     .addColumn("sort_order", "integer", (col) => col.notNull().defaultTo(1))
     .addColumn("created_at", "timestamptz", (col) =>
