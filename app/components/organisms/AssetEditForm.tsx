@@ -38,7 +38,12 @@ const radioIndicatorClassName =
 const radioOptionClassName =
   "flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white/70 px-3 py-2 text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white";
 
-const categoryOptions = [
+export type CategoryOption = {
+  value: string;
+  label: string;
+};
+
+const defaultCategoryOptions: CategoryOption[] = [
   { value: "stocks", label: "Stocks" },
   { value: "crypto", label: "Crypto" },
   { value: "properties", label: "Properties" },
@@ -61,6 +66,7 @@ export default function AssetEditForm({
   submitCount,
   showDelete = false,
   onDelete,
+  categoryOptions = defaultCategoryOptions,
 }: {
   control: Control<AssetEditFormValues>;
   setValue: UseFormSetValue<AssetEditFormValues>;
@@ -69,6 +75,7 @@ export default function AssetEditForm({
   submitCount: number;
   showDelete?: boolean;
   onDelete?: () => void;
+  categoryOptions?: CategoryOption[];
 }) {
   const router = useRouter();
   const selectedKind = useWatch({ control, name: "kind" });
