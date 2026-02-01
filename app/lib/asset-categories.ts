@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Selectable } from "kysely";
 
 import type { DB } from "@/app/lib/db-types";
+import { parseNumberLike } from "@/app/lib/number-utils";
 import {
   isBtcAddress,
   isEthAddress,
@@ -17,23 +18,6 @@ import type {
 export type CategoryRow = Selectable<DB["categories"]>;
 
 export type AssetRow = Selectable<DB["assets"]>;
-
-const numberLikeSchema = z.preprocess((value) => {
-  if (typeof value === "bigint") {
-    return Number(value);
-  }
-
-  if (typeof value === "string" && value.trim() !== "") {
-    return Number(value);
-  }
-
-  return value;
-}, z.number());
-
-const parseNumber = (value: unknown, fallback: number): number => {
-  const parsed = numberLikeSchema.safeParse(value);
-  return parsed.success ? parsed.data : fallback;
-};
 
 const assetKindSchema = z.enum(["stock", "crypto", "wallet", "manual"]);
 
@@ -74,14 +58,14 @@ const inferWalletNetwork = (
 };
 
 const compareSort = (a: number | string | null, b: number | string | null) => {
-  return parseNumber(a, 1) - parseNumber(b, 1);
+  return parseNumberLike(a, 1) - parseNumberLike(b, 1);
 };
 
 const compareByName = (a: string, b: string) =>
   a.localeCompare(b, "en", { sensitivity: "base" });
 
 const centsToUsd = (value: number | string | bigint | null): number => {
-  const cents = parseNumber(value, 0);
+  const cents = parseNumberLike(value, 0);
   return cents / 100;
 };
 
@@ -93,7 +77,7 @@ const mapAssetItem = (asset: AssetRow): AssetItem => {
     ticker,
     name: asset.name,
     price: centsToUsd(asset.value_cents),
-    quantity: parseNumber(asset.quantity, 1),
+    quantity: parseNumberLike(asset.quantity, 1),
   };
 
   if (kind === "wallet") {

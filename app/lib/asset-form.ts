@@ -1,6 +1,13 @@
 import { z } from "zod";
+import type { Selectable } from "kysely";
 
 import type { AssetKind } from "@/app/lib/networth";
+import type { DB } from "@/app/lib/db-types";
+import {
+  centsToPriceString,
+  parseNumericString,
+  toNumericString,
+} from "@/app/lib/number-utils";
 
 export const assetKindSchema = z.enum(["stock", "crypto", "wallet", "manual"]);
 
@@ -46,12 +53,12 @@ export type NormalizedAssetFormValues = {
   sortOrder: number;
 };
 
-const parseNumber = (value: string): number => {
-  return Number(value);
+export type AssetFormRecord = Selectable<DB["assets"]> & {
+  category_name: string;
 };
 
 const parseCurrencyToCents = (value: string): number => {
-  return Math.round(parseNumber(value) * 100);
+  return Math.round(parseNumericString(value) * 100);
 };
 
 export const normalizeAssetFormValues = (
@@ -69,9 +76,27 @@ export const normalizeAssetFormValues = (
     categoryInput,
     kind: parsed.kind,
     walletAddress: walletAddress.length > 0 ? walletAddress : null,
-    quantity: parseNumber(parsed.quantity),
+    quantity: parseNumericString(parsed.quantity),
     valueCents: parseCurrencyToCents(parsed.price),
-    sortOrder: parseNumber(parsed.order),
+    sortOrder: parseNumericString(parsed.order),
+  };
+};
+
+export const assetFormValuesFromRecord = (
+  record: AssetFormRecord,
+): AssetEditFormValues => {
+  const kindResult = assetKindSchema.safeParse(record.kind);
+  const kind = kindResult.success ? kindResult.data : "manual";
+
+  return {
+    walletAddress: record.wallet_address?.trim() ?? "",
+    name: record.name?.trim() ?? "",
+    ticker: record.ticker_symbol?.trim().toUpperCase() ?? "",
+    category: record.category_name?.trim() ?? "",
+    order: toNumericString(record.sort_order, "1"),
+    kind,
+    price: centsToPriceString(record.value_cents, "1"),
+    quantity: toNumericString(record.quantity, "1"),
   };
 };
 
