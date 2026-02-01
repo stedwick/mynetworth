@@ -32,6 +32,7 @@
 - Match existing style: 2-space indentation, double quotes, semicolons, and Tailwind utility classes for styling.
 - Follow Next.js file conventions (`page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`).
 - Prefer shared formatters in `app/lib/networth.ts` (e.g., `formatUsd`, `formatQuantity`) instead of re-creating formatters in components.
+- Prefer `SELECT *` in service queries for ease of use; if you select a subset of columns, narrow the type at the query site.
 
 ## Testing Guidelines
 

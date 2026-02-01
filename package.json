@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "check": "bun run lint && bun run format && bun run test && bun run build",
+    "check": "bun run lint && bun run format && bun run typecheck && bun run test && bun run build",
     "migrate": "bun run scripts/migrate.ts",
     "migrate:latest": "bun run scripts/migrate.ts latest",
     "migrate:down": "bun run scripts/migrate.ts down",
-    "codegen": "kysely-codegen --out-file app/lib/db.d.ts"
+    "codegen": "kysely-codegen --out-file app/lib/db-types.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

@@ -26,6 +26,10 @@ bun run check
 
 - Do not use Base UI Button. Use Next.js `Link` styled with `app-button*` classes, or a native `<button>` with those classes for form actions.
 
+## Data Access Notes
+
+- Prefer `SELECT *` in service queries for ease of use; if you select a subset of columns, narrow the type at the query site.
+
 ## Environment Variables
 
 Set these in `.env` or `.env.local`:
