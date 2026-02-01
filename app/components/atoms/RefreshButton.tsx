@@ -9,7 +9,7 @@ export default function RefreshButton() {
   return (
     <button
       type="submit"
-      className="app-button w-full gap-2 sm:w-auto"
+      className="app-button asset-refresh-button w-full gap-2 sm:w-auto"
       disabled={pending}
       aria-disabled={pending}
     >

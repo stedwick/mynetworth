@@ -1,38 +1,29 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import EditCategoryForm from "@/app/categories/[id]/edit/EditCategoryForm";
+import { categoryFormValuesFromRecord } from "@/app/lib/category-form";
+import { getCategoryForUser } from "@/app/lib/services/categories.service";
+import { authServer } from "@/lib/auth/server";
 
-import CategoryEditForm from "@/app/components/organisms/CategoryEditForm";
-import CategoryEditPageTemplate from "@/app/components/templates/CategoryEditPageTemplate";
-import {
-  categoryEditDefaultValues,
-  type CategoryEditFormValues,
-} from "@/app/lib/category-form";
+export default async function CategoryEditPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { data } = await authServer.getSession();
 
-export default function CategoryEditPage() {
-  const router = useRouter();
-  const { control, handleSubmit, formState } = useForm<CategoryEditFormValues>({
-    defaultValues: categoryEditDefaultValues,
-    mode: "onBlur",
-  });
+  if (!data?.user) {
+    redirect("/auth/sign-in");
+  }
 
-  const onSubmit = handleSubmit(() => {});
+  const category = await getCategoryForUser(data.user.id, id);
 
-  return (
-    <CategoryEditPageTemplate
-      title="Edit category"
-      description="Update the category name and order."
-      form={
-        <CategoryEditForm
-          control={control}
-          onSubmit={onSubmit}
-          submitting={formState.isSubmitting}
-          submitCount={formState.submitCount}
-          onBack={() => router.back()}
-          showDelete
-        />
-      }
-    />
-  );
+  if (!category) {
+    redirect("/me");
+  }
+
+  const initialValues = categoryFormValuesFromRecord(category);
+
+  return <EditCategoryForm categoryId={id} initialValues={initialValues} />;
 }
