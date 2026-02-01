@@ -11,6 +11,8 @@ export default function AssetTable({
 }: {
   categories: AssetCategory[];
 }) {
+  const hasAssets = categories.some((category) => category.items.length > 0);
+
   return (
     <section className="space-y-4">
       <div>
@@ -39,19 +41,31 @@ export default function AssetTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/70 dark:divide-white/10">
-              {categories.map((category, index) => (
-                <Fragment key={category.id}>
-                  {index > 0 ? (
-                    <tr
-                      aria-hidden="true"
-                      className="border-t border-slate-200/70 dark:border-white/10"
-                    >
-                      <td colSpan={6} className="h-4 bg-transparent" />
-                    </tr>
-                  ) : null}
-                  <AssetCategorySection category={category} />
-                </Fragment>
-              ))}
+              {!hasAssets ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-10 text-left text-sm text-slate-500 dark:text-white/60 sm:text-center"
+                  >
+                    Welcome to My Net Worth! Add your first asset to start
+                    tracking.
+                  </td>
+                </tr>
+              ) : (
+                categories.map((category, index) => (
+                  <Fragment key={category.id}>
+                    {index > 0 ? (
+                      <tr
+                        aria-hidden="true"
+                        className="border-t border-slate-200/70 dark:border-white/10"
+                      >
+                        <td colSpan={6} className="h-4 bg-transparent" />
+                      </tr>
+                    ) : null}
+                    <AssetCategorySection category={category} />
+                  </Fragment>
+                ))
+              )}
             </tbody>
           </table>
         </ScrollableTableContainer>

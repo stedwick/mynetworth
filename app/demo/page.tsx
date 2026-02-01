@@ -1,3 +1,7 @@
+import { Suspense } from "react";
+
+import DemoBannerFallback from "@/app/components/molecules/DemoBannerFallback";
+import DemoBanner from "@/app/components/organisms/DemoBanner";
 import MePageTemplate from "@/app/components/templates/MePageTemplate";
 import { type AssetCategory } from "@/app/lib/networth";
 
@@ -142,6 +146,9 @@ export const mockCategories: AssetCategory[] = [
 export default function DemoPage() {
   return (
     <div className="demo-hide-edits">
+      <Suspense fallback={<DemoBannerFallback />}>
+        <DemoBanner />
+      </Suspense>
       <MePageTemplate categories={mockCategories} />
     </div>
   );
