@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const highlightItems = [
@@ -18,34 +19,34 @@ const highlightItems = [
 
 const featureItems = [
   {
-    icon: "https://img.icons8.com/?id=13551&format=png&size=96",
+    icon: "/icons8/statistics.png",
     title: "Net worth at a glance",
     description: "See the total and what moved without digging through tabs.",
   },
   {
-    icon: "https://img.icons8.com/?id=13803&format=png&size=96",
+    icon: "/icons8/layers.png",
     title: "Any asset, one view",
     description:
       "Track stocks, ETFs, mutual funds, crypto, credit cards, and real assets.",
   },
   {
-    icon: "https://img.icons8.com/?id=114444&format=png&size=96",
+    icon: "/icons8/security-lock.png",
     title: "Private by default",
     description: "No bank connections or syncs. You decide what goes in.",
   },
   {
-    icon: "https://img.icons8.com/?id=63250&format=png&size=96",
+    icon: "/icons8/clock.png",
     title: "Hourly refresh",
     description: "Market prices stay current within an hour when you refresh.",
   },
   {
-    icon: "https://img.icons8.com/?id=13721&format=png&size=96",
+    icon: "/icons8/categorize.png",
     title: "Category-first organization",
     description:
       "Group assets the way your brain works, not the way a bank does.",
   },
   {
-    icon: "https://img.icons8.com/?id=13739&format=png&size=96",
+    icon: "/icons8/target.png",
     title: "Progress over time",
     description: "See trends and milestones in one place without spreadsheets.",
   },
@@ -225,11 +226,11 @@ export default function HomePageTemplate() {
                     className="group rounded-2xl border border-(--page-border) bg-(--page-surface) p-5 shadow-sm transition hover:-translate-y-1 hover:border-(--page-border-strong) hover:bg-(--page-surface-strong)"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-(--page-surface-strong) shadow-sm">
-                      <img
+                      <Image
                         src={item.icon}
                         alt={`${item.title} icon`}
-                        className="h-8 w-8"
-                        loading="lazy"
+                        width={32}
+                        height={32}
                       />
                     </div>
                     <h3 className="mt-4 text-lg font-semibold text-(--page-ink)">
