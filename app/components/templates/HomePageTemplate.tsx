@@ -18,36 +18,36 @@ const highlightItems = [
 
 const featureItems = [
   {
-    tag: "NW",
+    icon: "https://img.icons8.com/?id=13551&format=png&size=96",
     title: "Net worth at a glance",
     description: "See the total and what moved without digging through tabs.",
   },
   {
-    tag: "AU",
+    icon: "https://img.icons8.com/?id=13803&format=png&size=96",
     title: "Any asset, one view",
     description:
       "Track stocks, ETFs, mutual funds, crypto, credit cards, and real assets.",
   },
   {
-    tag: "PR",
+    icon: "https://img.icons8.com/?id=114444&format=png&size=96",
     title: "Private by default",
     description: "No bank connections or syncs. You decide what goes in.",
   },
   {
-    tag: "HR",
+    icon: "https://img.icons8.com/?id=63250&format=png&size=96",
     title: "Hourly refresh",
     description: "Market prices stay current within an hour when you refresh.",
   },
   {
-    tag: "CF",
+    icon: "https://img.icons8.com/?id=13721&format=png&size=96",
     title: "Category-first organization",
     description:
       "Group assets the way your brain works, not the way a bank does.",
   },
   {
-    tag: "FR",
-    title: "Focused refresh",
-    description: "Update values quickly so the dashboard always feels current.",
+    icon: "https://img.icons8.com/?id=13739&format=png&size=96",
+    title: "Progress over time",
+    description: "See trends and milestones in one place without spreadsheets.",
   },
 ];
 
@@ -101,21 +101,14 @@ export default function HomePageTemplate() {
 
         <div className="relative">
           <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-10 sm:px-6 lg:px-8 lg:pt-16">
-            <section
-              id="overview"
-              className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center"
-            >
+            <section id="overview" className="grid gap-12">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-(--page-muted)">
-                  Privacy first
-                </p>
-                <h1 className="mt-4 text-4xl font-semibold leading-[1.05] text-(--page-ink) sm:text-5xl lg:text-6xl">
+                <h1 className="text-4xl font-semibold leading-[1.05] text-(--page-ink) sm:text-5xl lg:text-6xl">
                   Your net worth deserves a quiet home.
                 </h1>
                 <p className="mt-4 max-w-xl text-base text-(--page-muted) sm:text-lg">
-                  Focused design, secure access, and no noisy dashboards. Keep
-                  the data where it belongs and the decisions where you are
-                  strongest.
+                  Track every asset type in one calm dashboard, no spreadsheets
+                  required.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
@@ -151,7 +144,7 @@ export default function HomePageTemplate() {
               <div className="relative">
                 <div className="absolute -left-10 top-8 h-40 w-40 rounded-full border border-(--page-border) bg-(--page-surface) shadow-sm" />
                 <div className="absolute -bottom-6 right-10 h-20 w-20 rounded-2xl border border-(--page-border) bg-(--page-surface-strong) shadow-sm" />
-                <div className="relative rounded-4xl border border-(--page-border) bg-(--page-surface-strong) p-6 shadow-2xl backdrop-blur">
+                <div className="relative w-full rounded-4xl border border-(--page-border) bg-(--page-surface-strong) p-6 shadow-2xl backdrop-blur">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-(--page-muted)">
@@ -204,9 +197,6 @@ export default function HomePageTemplate() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-xl border border-dashed border-(--page-border-strong) bg-(--page-surface) px-4 py-3 text-xs text-(--page-muted)">
-                    Demo data only - your real data stays private.
-                  </div>
                 </div>
               </div>
             </section>
@@ -223,7 +213,7 @@ export default function HomePageTemplate() {
                 </div>
                 <Link
                   href="/me"
-                  className="inline-flex items-center justify-center rounded-full border-2 border-(--page-ghost-border) bg-(--page-ghost-bg) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--page-ghost-fg) shadow-sm transition hover:bg-(--page-ghost-hover) hover:shadow-md active:bg-(--page-ghost-hover) active:shadow-sm"
+                  className="inline-flex items-center justify-center rounded-full border-2 border-(--page-cta-border) bg-(--page-cta-bg) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--page-cta-fg) shadow-sm transition hover:bg-(--page-cta-hover) hover:shadow-md active:bg-(--page-cta-hover) active:shadow-sm"
                 >
                   Open portfolio
                 </Link>
@@ -234,8 +224,13 @@ export default function HomePageTemplate() {
                     key={item.title}
                     className="group rounded-2xl border border-(--page-border) bg-(--page-surface) p-5 shadow-sm transition hover:-translate-y-1 hover:border-(--page-border-strong) hover:bg-(--page-surface-strong)"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-(--page-strong-bg) text-sm font-semibold text-(--page-strong-fg) shadow-sm">
-                      {item.tag}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-(--page-surface-strong) shadow-sm">
+                      <img
+                        src={item.icon}
+                        alt={`${item.title} icon`}
+                        className="h-8 w-8"
+                        loading="lazy"
+                      />
                     </div>
                     <h3 className="mt-4 text-lg font-semibold text-(--page-ink)">
                       {item.title}
@@ -286,7 +281,7 @@ export default function HomePageTemplate() {
             </section>
 
             <section id="use-cases" className="mt-16">
-              <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+              <div className="flex flex-col gap-8">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.4em] text-(--page-muted)">
                     Use cases
@@ -298,7 +293,7 @@ export default function HomePageTemplate() {
                     Whether you are tracking a household, a solo venture, or a
                     growing portfolio, My Net Worth keeps the picture clear.
                   </p>
-                  <div className="mt-6 grid gap-4">
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {useCases.map((item) => (
                       <div
                         key={item.title}
@@ -315,53 +310,42 @@ export default function HomePageTemplate() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  <div className="rounded-3xl border border-(--page-border) bg-(--page-surface-strong) p-6 shadow-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-(--page-muted)">
-                      Ready to feel clear
-                    </p>
-                    <h3 className="mt-3 text-2xl font-semibold text-(--page-ink)">
-                      Stop guessing. Start tracking.
-                    </h3>
-                    <p className="mt-3 text-sm text-(--page-muted)">
-                      Launch your dashboard in minutes and keep your net worth
-                      conversation simple.
-                    </p>
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      <Link
-                        href="/auth/sign-up"
-                        className="inline-flex items-center justify-center rounded-full border-2 border-(--page-cta-border) bg-(--page-cta-bg) px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--page-cta-fg) shadow-sm transition hover:bg-(--page-cta-hover) hover:shadow-md active:bg-(--page-cta-hover) active:shadow-sm"
-                      >
-                        Create account
-                      </Link>
-                      <Link
-                        href="/demo"
-                        className="inline-flex items-center justify-center rounded-full border-2 border-(--page-ghost-border) bg-(--page-ghost-bg) px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--page-ghost-fg) shadow-sm transition hover:bg-(--page-ghost-hover) hover:shadow-md active:bg-(--page-ghost-hover) active:shadow-sm"
-                      >
-                        Explore demo
-                      </Link>
-                    </div>
+                <div className="rounded-3xl border border-(--page-border) bg-(--page-surface-strong) p-6 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-(--page-muted)">
+                    Ready to feel clear
+                  </p>
+                  <h3 className="mt-3 text-2xl font-semibold text-(--page-ink)">
+                    Stop guessing. Start tracking.
+                  </h3>
+                  <p className="mt-3 text-sm text-(--page-muted)">
+                    Launch your dashboard in minutes and keep your net worth
+                    conversation simple.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      href="/auth/sign-up"
+                      className="inline-flex items-center justify-center rounded-full border-2 border-(--page-cta-border) bg-(--page-cta-bg) px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--page-cta-fg) shadow-sm transition hover:bg-(--page-cta-hover) hover:shadow-md active:bg-(--page-cta-hover) active:shadow-sm"
+                    >
+                      Create account
+                    </Link>
+                    <Link
+                      href="/demo"
+                      className="inline-flex items-center justify-center rounded-full border-2 border-emerald-600 bg-emerald-600 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-sm transition hover:bg-emerald-500 hover:shadow-md active:bg-emerald-700 active:shadow-sm"
+                    >
+                      Explore demo
+                    </Link>
                   </div>
                 </div>
               </div>
             </section>
 
             <section className="mt-16 rounded-3xl border border-(--page-border) bg-(--page-contrast-bg) px-6 py-10 text-center text-(--page-contrast-fg) shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-(--page-contrast-muted)">
-                Privacy first
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold">
-                Your net worth stays yours.
+              <h2 className="text-2xl font-semibold sm:text-3xl">
+                My Net Worth - a calmer way to track wealth.
               </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-sm text-(--page-contrast-muted)">
-                My Net Worth never connects to your bank. You stay in control,
-                and prices update within an hour when you refresh.
-              </p>
             </section>
 
-            <footer className="mt-12 border-t border-(--page-border) py-8 text-center text-xs text-(--page-muted)">
-              <p>My Net Worth - a calmer way to track wealth.</p>
-            </footer>
+            <footer className="mt-12 border-t border-(--page-border) py-8 text-center text-xs text-(--page-muted)"></footer>
           </main>
           <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
             <Link
