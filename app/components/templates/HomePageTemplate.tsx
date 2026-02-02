@@ -1,25 +1,19 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 
-const navItems = [
-  { label: "Overview", href: "#overview" },
-  { label: "Features", href: "#features" },
-  { label: "Workflow", href: "#workflow" },
-  { label: "Use cases", href: "#use-cases" },
-];
-
 const highlightItems = [
   {
-    title: "Single dashboard",
-    description: "Assets, liabilities, and cash in one calm view.",
+    title: "All asset types",
+    description:
+      "Stocks, ETFs, mutual funds, crypto, credit cards, plus houses and cars.",
   },
   {
-    title: "Snapshot ready",
-    description: "Track changes over time without rebuilding sheets.",
+    title: "Private by design",
+    description: "Never connects to your bank. Your data stays with you.",
   },
   {
-    title: "Clean categories",
-    description: "Organize holdings the way you actually think.",
+    title: "Fresh within the hour",
+    description: "Prices stay up to date within an hour, without the noise.",
   },
 ];
 
@@ -28,31 +22,30 @@ const featureItems = [
     tag: "NW",
     title: "Net worth at a glance",
     description:
-      "See the total, the trend, and what moved without digging through tabs.",
+      "See the total and what moved without digging through tabs.",
   },
   {
-    tag: "AM",
-    title: "Asset mix clarity",
+    tag: "AU",
+    title: "Any asset, one view",
     description:
-      "Break down cash, investments, property, and debts with clean totals.",
+      "Track stocks, ETFs, mutual funds, crypto, credit cards, and real assets.",
   },
   {
-    tag: "SN",
-    title: "Snapshots you control",
+    tag: "PR",
+    title: "Private by default",
+    description: "No bank connections or syncs. You decide what goes in.",
+  },
+  {
+    tag: "HR",
+    title: "Hourly refresh",
     description:
-      "Capture monthly or quarterly moments and compare them side by side.",
+      "Market prices stay current within an hour when you refresh.",
   },
   {
     tag: "CF",
     title: "Category-first organization",
     description:
-      "Group accounts the way your brain works, not the way a bank does.",
-  },
-  {
-    tag: "PN",
-    title: "Portfolio notes",
-    description:
-      "Keep the context for every move so future you stays confident.",
+      "Group assets the way your brain works, not the way a bank does.",
   },
   {
     tag: "FR",
@@ -74,8 +67,8 @@ const workflowSteps = [
   },
   {
     step: "03",
-    title: "Review snapshots",
-    description: "Watch trends, set goals, and see how you are moving.",
+    title: "Refresh within the hour",
+    description: "Update prices fast so totals always feel current.",
   },
 ];
 
@@ -122,66 +115,33 @@ export default function HomePageTemplate() {
         </div>
 
         <div className="relative">
-          <header className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/70 bg-white/70 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
-                  My Net Worth
-                </p>
-                <p className="mt-1 text-lg font-semibold text-(--ink)">
-                  Calm money decisions start here.
-                </p>
-              </div>
-              <nav
-                aria-label="Primary"
-                className="flex flex-wrap items-center gap-2"
-              >
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-full border border-slate-200/80 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                <Link
-                  href="/auth/sign-in"
-                  className="rounded-full bg-(--ink) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:opacity-90"
-                >
-                  Get started
-                </Link>
-              </nav>
-            </div>
-          </header>
-
-          <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10 sm:px-6 lg:px-8 lg:pt-16">
+          <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-10 sm:px-6 lg:px-8 lg:pt-16">
             <section
               id="overview"
               className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center"
             >
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
-                  Your financial cockpit
+                  Privacy first
                 </p>
                 <h1 className="mt-4 text-4xl font-semibold leading-[1.05] text-(--ink) sm:text-5xl lg:text-6xl">
-                  Know your number. Own every decision.
+                  Your net worth deserves a quiet home.
                 </h1>
                 <p className="mt-4 max-w-xl text-base text-slate-600 sm:text-lg">
-                  My Net Worth turns assets and liabilities into a living
-                  balance sheet. Track progress, capture snapshots, and move
-                  with confidence without rebuilding spreadsheets.
+                  Focused design, secure access, and no noisy dashboards. Keep
+                  the data where it belongs and the decisions where you are
+                  strongest.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href="/auth/sign-up"
-                    className="inline-flex items-center justify-center rounded-full bg-(--ink) px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                    className="inline-flex items-center justify-center rounded-full border-2 border-(--ink) bg-(--ink) px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 hover:shadow-md active:bg-slate-950 active:shadow-sm"
                   >
                     Create your dashboard
                   </Link>
                   <Link
                     href="/demo"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-300/80 bg-white/80 px-6 py-3 text-sm font-semibold text-(--ink) transition hover:border-slate-400"
+                    className="inline-flex items-center justify-center rounded-full border-2 border-emerald-600 bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 hover:shadow-md active:bg-emerald-700 active:shadow-sm"
                   >
                     View demo
                   </Link>
@@ -210,42 +170,57 @@ export default function HomePageTemplate() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                        Net worth
+                        Supported assets
                       </p>
                       <p className="mt-2 text-2xl font-semibold text-(--ink)">
-                        $1,248,400
+                        Markets + real life
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Updated today
+                        Everything in one private view.
                       </p>
                     </div>
-                    <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Up 2.4%
+                    <div className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                      No bank connections
                     </div>
                   </div>
-                  <div className="mt-6 h-32 overflow-hidden rounded-2xl border border-slate-200/60 bg-[linear-gradient(135deg,rgba(15,23,42,0.04),rgba(15,23,42,0.01))]">
-                    <div className="h-full w-full bg-[linear-gradient(90deg,rgba(14,165,233,0.45),rgba(14,165,233,0.05))]" />
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {[
+                      "Stocks",
+                      "ETFs",
+                      "Mutual funds",
+                      "Crypto",
+                      "Credit cards",
+                      "Houses",
+                      "Cars",
+                    ].map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-slate-200/70 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600"
+                      >
+                        {item}
+                      </span>
+                    ))}
                   </div>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border border-slate-200/70 bg-white/80 p-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Assets
+                        Privacy first
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-(--ink)">
-                        $1,980,200
+                      <p className="mt-2 text-sm font-semibold text-(--ink)">
+                        Never connects to your bank.
                       </p>
                     </div>
                     <div className="rounded-xl border border-slate-200/70 bg-white/80 p-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Liabilities
+                        Hourly updates
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-(--ink)">
-                        $731,800
+                      <p className="mt-2 text-sm font-semibold text-(--ink)">
+                        Prices stay current within an hour.
                       </p>
                     </div>
                   </div>
                   <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                    Demo snapshot - your data stays in your account.
+                    Demo data only - your real data stays private.
                   </div>
                 </div>
               </div>
@@ -263,7 +238,7 @@ export default function HomePageTemplate() {
                 </div>
                 <Link
                   href="/me"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-300/80 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink) transition hover:border-slate-400"
+                  className="inline-flex items-center justify-center rounded-full border-2 border-(--ink) bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink) shadow-sm transition hover:bg-slate-100 hover:shadow-md active:bg-slate-200 active:shadow-sm"
                 >
                   Open portfolio
                 </Link>
@@ -356,26 +331,6 @@ export default function HomePageTemplate() {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <div className="rounded-3xl border border-slate-200/70 bg-(--ink) p-6 text-white shadow-lg">
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/70">
-                      Privacy first
-                    </p>
-                    <h3 className="mt-3 text-2xl font-semibold">
-                      Your net worth deserves a quiet home.
-                    </h3>
-                    <p className="mt-3 text-sm text-white/80">
-                      Focused design, secure access, and no noisy dashboards.
-                      Keep the data where it belongs and the decisions where you
-                      are strongest.
-                    </p>
-                    <Link
-                      href="/account/security"
-                      className="mt-6 inline-flex items-center justify-center rounded-full border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white/70"
-                    >
-                      Security settings
-                    </Link>
-                  </div>
-
                   <div className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
                       Ready to feel clear
@@ -390,13 +345,13 @@ export default function HomePageTemplate() {
                     <div className="mt-6 flex flex-wrap gap-3">
                       <Link
                         href="/auth/sign-up"
-                        className="inline-flex items-center justify-center rounded-full bg-(--ink) px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:opacity-90"
+                        className="inline-flex items-center justify-center rounded-full border-2 border-(--ink) bg-(--ink) px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-sm transition hover:bg-slate-900 hover:shadow-md active:bg-slate-950 active:shadow-sm"
                       >
                         Create account
                       </Link>
                       <Link
                         href="/demo"
-                        className="inline-flex items-center justify-center rounded-full border border-slate-300/80 bg-white px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink) transition hover:border-slate-400"
+                        className="inline-flex items-center justify-center rounded-full border-2 border-(--ink) bg-white px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink) shadow-sm transition hover:bg-slate-100 hover:shadow-md active:bg-slate-200 active:shadow-sm"
                       >
                         Explore demo
                       </Link>
@@ -406,47 +361,31 @@ export default function HomePageTemplate() {
               </div>
             </section>
 
-            <section className="mt-16 rounded-3xl border border-slate-200/70 bg-white/80 px-6 py-10 text-center shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
-                The My Net Worth promise
+            <section className="mt-16 rounded-3xl border border-slate-200/70 bg-(--ink) px-6 py-10 text-center text-white shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
+                Privacy first
               </p>
-              <h2 className="mt-3 text-3xl font-semibold text-(--ink)">
-                Focus on the number that matters most.
+              <h2 className="mt-3 text-3xl font-semibold">
+                Your net worth stays yours.
               </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600">
-                Set a baseline, update when life changes, and track the story of
-                your wealth with confidence. The dashboard stays ready whenever
-                you are.
+              <p className="mx-auto mt-3 max-w-2xl text-sm text-white/80">
+                My Net Worth never connects to your bank. You stay in control,
+                and prices update within an hour when you refresh.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Link
-                  href="/auth/sign-in"
-                  className="inline-flex items-center justify-center rounded-full bg-(--ink) px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/demo"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-300/80 bg-white px-6 py-3 text-sm font-semibold text-(--ink) transition hover:border-slate-400"
-                >
-                  See it in action
-                </Link>
-              </div>
             </section>
 
-            <footer className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200/70 py-8 text-xs text-slate-500 sm:flex-row">
+            <footer className="mt-12 border-t border-slate-200/70 py-8 text-center text-xs text-slate-500">
               <p>My Net Worth - a calmer way to track wealth.</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <Link href="/account/settings" className="hover:text-slate-700">
-                  Account settings
-                </Link>
-                <span className="text-slate-300">|</span>
-                <Link href="/account/security" className="hover:text-slate-700">
-                  Security
-                </Link>
-              </div>
             </footer>
           </main>
+          <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+            <Link
+              href="/demo"
+              className="pointer-events-auto inline-flex items-center justify-center rounded-full border-2 border-emerald-600 bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-400/40 transition hover:bg-emerald-500 hover:shadow-emerald-300/50 active:bg-emerald-700 active:shadow-emerald-400/40 motion-safe:animate-bounce motion-reduce:animate-none"
+            >
+              View demo
+            </Link>
+          </div>
         </div>
       </div>
     </div>

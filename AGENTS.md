@@ -78,3 +78,4 @@
 - Make the smallest change that solves the task; avoid broad refactors.
 - Don’t run the app server or database migrations from automation; keep failures loud rather than blanket `try/catch`.
 - After major changes, update the README.md for humans and AGENTS.md for LLMs. If either is longer than 100 lines, condense.
+- Refer to app/lib/db-types.ts for a typed schema of our database.
