@@ -21,8 +21,7 @@ const featureItems = [
   {
     tag: "NW",
     title: "Net worth at a glance",
-    description:
-      "See the total and what moved without digging through tabs.",
+    description: "See the total and what moved without digging through tabs.",
   },
   {
     tag: "AU",
@@ -38,8 +37,7 @@ const featureItems = [
   {
     tag: "HR",
     title: "Hourly refresh",
-    description:
-      "Market prices stay current within an hour when you refresh.",
+    description: "Market prices stay current within an hour when you refresh.",
   },
   {
     tag: "CF",
