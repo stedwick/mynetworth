@@ -19,6 +19,7 @@ export function NeonAuthProvider({ children }: NeonAuthProviderProps) {
       replace={router.replace}
       onSessionChange={() => router.refresh()}
       redirectTo="/me"
+      social={{ providers: ["google"] }}
       Link={Link}
     >
       {children}
