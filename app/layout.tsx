@@ -27,13 +27,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: "My Net Worth",
     description:
-      "All your assets on one page in a single table. Safe by design with no account connections.",
+      "Portfolio of all your stocks, ETFs, crypto wallets, retirement assets, credit cards, and debt. All on one page.",
+    url: siteUrl,
+    siteName: "My Net Worth",
     type: "website",
     images: [
       {
-        url: "/api/og",
+        url: "/full-screenshot-light.png",
         width: 1200,
-        height: 630,
+        height: 750,
         alt: "My Net Worth preview image",
       },
     ],
@@ -42,8 +44,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "My Net Worth",
     description:
-      "All your assets on one page in a single table. Safe by design with no account connections.",
-    images: ["/api/og"],
+      "Portfolio of all your stocks, ETFs, crypto wallets, retirement assets, credit cards, and debt. All on one page.",
+    images: ["/full-screenshot-light.png"],
   },
 };
 
