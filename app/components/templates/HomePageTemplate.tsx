@@ -104,6 +104,16 @@ export default function HomePageTemplate() {
           <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-10 sm:px-6 lg:px-8 lg:pt-16">
             <section id="overview" className="grid gap-12">
               <div>
+                <div className="float-right mb-3 ml-4 w-20 sm:w-24">
+                  <Image
+                    src="/icon-full.png"
+                    alt="My Net Worth logo"
+                    width={96}
+                    height={96}
+                    className="h-auto w-full"
+                    priority
+                  />
+                </div>
                 <h1 className="text-4xl font-semibold leading-[1.05] text-(--page-ink) sm:text-5xl lg:text-6xl">
                   Your net worth deserves a quiet home.
                 </h1>
@@ -346,7 +356,14 @@ export default function HomePageTemplate() {
               </h2>
             </section>
 
-            <footer className="mt-12 border-t border-(--page-border) py-8 text-center text-xs text-(--page-muted)"></footer>
+            <footer className="mt-12 border-t border-(--page-border) py-8 text-center text-xs text-(--page-muted)">
+              <Link
+                href="/privacy-policy"
+                className="font-semibold underline decoration-2 underline-offset-4 transition hover:text-(--page-ink)"
+              >
+                Privacy Policy
+              </Link>
+            </footer>
           </main>
           <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
             <Link

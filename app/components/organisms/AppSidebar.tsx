@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { authViewPaths } from "@neondatabase/auth/react/ui";
 import { authClient } from "@/lib/auth/client";
 
-const navItems = [
+const mainNavItems = [
   {
     id: "home",
     label: "Homepage",
@@ -40,6 +40,21 @@ const navItems = [
   },
 ];
 
+const legalNavItems = [
+  {
+    id: "privacy-policy",
+    label: "Privacy Policy",
+    href: "/privacy-policy",
+    icon: { src: "/icons8/privacy-policy.png", alt: "Privacy Policy" },
+  },
+  {
+    id: "terms-of-service",
+    label: "Terms of Service",
+    href: "/terms-of-service",
+    icon: { src: "/icons8/check.png", alt: "Terms of Service" },
+  },
+];
+
 export default function AppSidebar({
   onNavigate,
 }: {
@@ -56,7 +71,40 @@ export default function AppSidebar({
     <div className="flex min-h-full flex-col">
       <div className="app-sidebar-label">Menu</div>
       <nav className="app-sidebar-nav">
-        {navItems.map((item) => {
+        {mainNavItems.map((item) => {
+          const isActive = item.href === pathname;
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              onClick={handleNavigate}
+              aria-current={isActive ? "page" : undefined}
+              className={`app-sidebar-link ${
+                isActive ? "app-sidebar-link-active" : ""
+              }`}
+            >
+              <span className="app-sidebar-link-content">
+                <Image
+                  src={item.icon.src}
+                  alt=""
+                  aria-hidden="true"
+                  className="app-sidebar-icon icon-light-dark"
+                  width={18}
+                  height={18}
+                  loading="lazy"
+                />
+                <span>{item.label}</span>
+              </span>
+              {isActive ? (
+                <span className="text-xs text-slate-400 dark:text-white/50">
+                  ●
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+        <hr className="my-2 border-slate-200/80 dark:border-white/10" />
+        {legalNavItems.map((item) => {
           const isActive = item.href === pathname;
           return (
             <Link

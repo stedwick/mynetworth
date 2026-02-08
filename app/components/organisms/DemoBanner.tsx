@@ -11,7 +11,7 @@ export default async function DemoBanner() {
   const label = isLoggedIn ? "View my portfolio" : "Create account";
   const message = isLoggedIn
     ? "This is a demo portfolio."
-    : "This is a demo portfolio. Sign up to see your real net worth.";
+    : "This is a demo portfolio. Assets & prices are made up. Sign up to see your real net worth.";
 
   return (
     <div className="mb-6 rounded-2xl border border-amber-200/70 bg-linear-to-r from-amber-200 via-amber-100 to-yellow-50 p-5 shadow-sm">
