@@ -21,6 +21,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/auth": "^0.1.0-beta.21",
     "@neondatabase/serverless": "^1.0.2",
+    "@vercel/analytics": "^1.6.1",
     "kysely": "^0.28.11",
     "next": "16.1.4",
     "react": "19.2.3",

@@ -5,6 +5,7 @@ import RouteRefreshTrigger from "@/app/components/atoms/RouteRefreshTrigger";
 import { NeonAuthProvider } from "@/app/components/organisms/NeonAuthProvider";
 import AppShellLayout from "@/app/components/templates/AppShellLayout";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Analytics />
         <div className="root">
           <NeonAuthProvider>
             <Suspense fallback={null}>
