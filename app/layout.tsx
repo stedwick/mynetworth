@@ -17,9 +17,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
   title: "My Net Worth",
-  description: "Track all your stocks and crypto in one place.",
+  description:
+    "All your assets on one page in a single table. Track stocks, crypto, 401(k), mortgage, credit card debt, and more.",
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    title: "My Net Worth",
+    description:
+      "All your assets on one page in a single table. Safe by design with no account connections.",
+    type: "website",
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "My Net Worth preview image",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "My Net Worth",
+    description:
+      "All your assets on one page in a single table. Safe by design with no account connections.",
+    images: ["/api/og"],
+  },
 };
 
 export default function RootLayout({

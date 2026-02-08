@@ -135,8 +135,8 @@ export default function HomePageTemplate() {
                   Your net worth deserves a quiet home.
                 </h1>
                 <p className="mt-4 max-w-xl text-base text-(--page-muted) sm:text-lg">
-                  All your assets on one page in a single table. Stocks,
-                  crypto, 401(k), mortgage, credit card debt, and more.
+                  All your assets on one page in a single table. Stocks, crypto,
+                  401(k), mortgage, credit card debt, and more.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
@@ -158,10 +158,14 @@ export default function HomePageTemplate() {
                       key={item.title}
                       className={`home-highlight-card relative rounded-2xl border p-4 ring-1 ring-white/50 ${item.cardClassName} ${item.borderAnimationClassName}`}
                     >
-                      <p className={`text-sm font-semibold ${item.titleClassName}`}>
+                      <p
+                        className={`text-sm font-semibold ${item.titleClassName}`}
+                      >
                         {item.title}
                       </p>
-                      <p className={`mt-2 text-sm ${item.descriptionClassName}`}>
+                      <p
+                        className={`mt-2 text-sm ${item.descriptionClassName}`}
+                      >
                         {item.description}
                       </p>
                     </div>
