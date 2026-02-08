@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   description:
     "All your assets on one page in a single table. Track stocks, crypto, 401(k), mortgage, credit card debt, and more.",
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/icon-full.png",
+  },
   openGraph: {
     title: "My Net Worth",
     description:
@@ -33,10 +38,10 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/full-screenshot-light.png",
-        width: 1200,
-        height: 750,
-        alt: "My Net Worth preview image",
+        url: "/opengraph-light.png",
+        width: 1804,
+        height: 1068,
+        alt: "My Net Worth Open Graph image",
       },
     ],
   },
@@ -45,7 +50,7 @@ export const metadata: Metadata = {
     title: "My Net Worth",
     description:
       "Portfolio of all your stocks, ETFs, crypto wallets, retirement assets, credit cards, and debt. All on one page.",
-    images: ["/full-screenshot-light.png"],
+    images: ["/opengraph-light.png"],
   },
 };
 

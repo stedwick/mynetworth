@@ -243,18 +243,18 @@ export default function HomePageTemplate() {
               <div className="home-screenshot-frame rounded-3xl p-[2px] shadow-2xl">
                 <div className="overflow-hidden rounded-[calc(1.5rem-2px)] border border-(--page-border) bg-(--page-surface-strong)">
                   <Image
-                    src="/screenshot-light.png"
+                    src="/opengraph-light.png"
                     alt="My Net Worth dashboard screenshot in light mode"
-                    width={1600}
-                    height={900}
+                    width={1804}
+                    height={1068}
                     className="home-screenshot-light h-auto w-full"
                     priority
                   />
                   <Image
-                    src="/screenshot-dark.png"
+                    src="/opengraph-dark.png"
                     alt="My Net Worth dashboard screenshot in dark mode"
-                    width={1600}
-                    height={900}
+                    width={1804}
+                    height={1068}
                     className="home-screenshot-dark h-auto w-full"
                   />
                 </div>
