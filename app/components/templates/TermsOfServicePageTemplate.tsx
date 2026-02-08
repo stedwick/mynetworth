@@ -1,5 +1,12 @@
 const termsSections = [
   {
+    title: "Service Scope",
+    points: [
+      "My Net Worth is a manual tracking tool that shows your financial picture on one page in a single table.",
+      "The service supports many asset and liability types, including stocks, crypto, 401(k), mortgage balances, and credit card debt.",
+    ],
+  },
+  {
     title: "Acceptance of Terms",
     points: [
       "By accessing or using My Net Worth, you agree to these Terms of Service.",
@@ -18,6 +25,15 @@ const termsSections = [
     points: [
       "You retain ownership of the data you provide, including portfolio and account content.",
       "You grant us permission to process your data solely to operate and improve the service.",
+      "You are responsible for the accuracy of values you enter or update in the app.",
+    ],
+  },
+  {
+    title: "No Financial Account Connections or Custody",
+    points: [
+      "My Net Worth does not connect to your bank account, crypto wallet, or other financial accounts.",
+      "We never touch, move, or have access to your funds.",
+      "You remain solely responsible for all financial decisions and transactions.",
     ],
   },
   {
@@ -65,7 +81,8 @@ export default function TermsOfServicePageTemplate() {
         </p>
         <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
           These terms govern your use of My Net Worth and describe your rights
-          and responsibilities.
+          and responsibilities, including important limits on account
+          connections and fund access.
         </p>
       </header>
 

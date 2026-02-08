@@ -3,8 +3,17 @@ const policySections = [
     title: "Information We Collect",
     points: [
       "Account information, such as your email address and authentication details.",
-      "Portfolio data you enter, including assets, liabilities, categories, and related values.",
+      "Portfolio data you enter, including assets, liabilities, categories, and related values in your single-table dashboard.",
+      "Examples of data you may enter include stocks, crypto, retirement accounts (like 401(k)), mortgage balances, and credit card debt.",
       "Basic technical data needed to operate the app, such as request logs and device/browser metadata.",
+    ],
+  },
+  {
+    title: "What We Do Not Collect or Access",
+    points: [
+      "We do not connect to your bank account, crypto wallet, or other financial accounts.",
+      "We do not ingest account credentials for banks, brokerages, exchanges, or wallets.",
+      "We never touch, move, or have access to your funds.",
     ],
   },
   {
@@ -61,7 +70,7 @@ export default function PrivacyPolicyPageTemplate() {
         </p>
         <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
           This policy explains what information My Net Worth collects, how we
-          use it, and what choices you have.
+          use it, what we do not access, and what choices you have.
         </p>
       </header>
 

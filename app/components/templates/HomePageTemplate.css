@@ -110,3 +110,107 @@
   --page-glow-3: rgba(45, 212, 191, 0.18);
   --page-grid: rgba(148, 163, 184, 0.08);
 }
+
+.home-highlight-card {
+  isolation: isolate;
+}
+
+.home-highlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    120deg,
+    var(--highlight-border-1),
+    var(--highlight-border-2),
+    var(--highlight-border-3),
+    var(--highlight-border-1)
+  );
+  background-size: 220% 220%;
+  animation: home-highlight-border-shift 4s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.home-highlight-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-highlight-card-gold {
+  --highlight-border-1: #f59e0b;
+  --highlight-border-2: #facc15;
+  --highlight-border-3: #f97316;
+}
+
+.home-highlight-card-emerald {
+  --highlight-border-1: #059669;
+  --highlight-border-2: #10b981;
+  --highlight-border-3: #14b8a6;
+}
+
+.home-highlight-card-sky {
+  --highlight-border-1: #0284c7;
+  --highlight-border-2: #3b82f6;
+  --highlight-border-3: #4f46e5;
+}
+
+@keyframes home-highlight-border-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-highlight-card::before {
+    animation: none;
+  }
+}
+
+.home-screenshot-frame {
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.45),
+    rgba(16, 185, 129, 0.35),
+    rgba(59, 130, 246, 0.45)
+  );
+}
+
+.home-screenshot-light {
+  display: block;
+}
+
+.home-screenshot-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .home-screenshot-light {
+    display: none;
+  }
+
+  .home-screenshot-dark {
+    display: block;
+  }
+}
+
+:root.dark .home-screenshot-light {
+  display: none;
+}
+
+:root.dark .home-screenshot-dark {
+  display: block;
+}
