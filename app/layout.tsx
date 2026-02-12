@@ -6,6 +6,7 @@ import { NeonAuthProvider } from "@/app/components/organisms/NeonAuthProvider";
 import AppShellLayout from "@/app/components/templates/AppShellLayout";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,6 +65,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=AW-17949979273"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'AW-17949979273');`}
+        </Script>
         <Analytics />
         <div className="root">
           <NeonAuthProvider>
