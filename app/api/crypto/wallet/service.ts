@@ -1,13 +1,13 @@
 import { cacheLife } from "next/cache";
 
-import { getMobulaAssets } from "../price/service";
-import { mapMobulaAssetsToPrices } from "../price/utils";
 import {
+  extractBtcPriceUsd,
   convertSatoshisToUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
   mapMobulaWalletBalancesToUsd,
   parseBtcUtxos,
+  parseMobulaMarketData,
   parseMobulaWalletBalances,
   parseMobulaWalletPortfolio,
   sumBtcUtxoSatoshis,
@@ -15,6 +15,7 @@ import {
 
 const MOBULA_WALLET_PORTFOLIO_URL =
   "https://api.mobula.io/api/1/wallet/portfolio";
+const MOBULA_MARKET_DATA_URL = "https://api.mobula.io/api/1/market/data";
 const BTCSCAN_API_URL = "https://btcscan.org/api";
 
 const getBtcUtxos = async (address: string) => {
@@ -82,6 +83,28 @@ const getMobulaWalletBalances = async (
   return mapMobulaWalletBalancesToUsd(data);
 };
 
+export const getBtcUsdPrice = async (apiKey: string): Promise<number> => {
+  "use cache";
+  cacheLife("hours");
+
+  const url = `${MOBULA_MARKET_DATA_URL}?asset=bitcoin`;
+  console.info("[crypto/wallet] Fetching BTC price from Mobula market data");
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: apiKey,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Mobula BTC price request failed");
+  }
+
+  const data = parseMobulaMarketData(await response.json());
+  return extractBtcPriceUsd(data);
+};
+
 export const getWalletBalanceUsd = async (
   address: string,
   apiKey: string,
@@ -89,14 +112,7 @@ export const getWalletBalanceUsd = async (
   if (isBtcAddress(address)) {
     const utxos = await getBtcUtxos(address);
     const satoshis = sumBtcUtxoSatoshis(utxos);
-    const btcData = await getMobulaAssets(["BTC"], apiKey);
-    const prices = mapMobulaAssetsToPrices(btcData.dataArray ?? []);
-    const btcUsdPrice = prices.BTC;
-
-    if (typeof btcUsdPrice !== "number") {
-      throw new Error("BTC price missing");
-    }
-
+    const btcUsdPrice = await getBtcUsdPrice(apiKey);
     return convertSatoshisToUsd(satoshis, btcUsdPrice);
   }
 

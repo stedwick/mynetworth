@@ -13,8 +13,15 @@ const mobulaWalletBalancesSchema = z.looseObject({
   data: z.unknown(),
 });
 
+const mobulaMarketDataSchema = z.looseObject({
+  data: z.looseObject({
+    price: z.number().nullable().optional(),
+  }),
+});
+
 export type MobulaWalletPortfolio = z.infer<typeof mobulaWalletPortfolioSchema>;
 export type MobulaWalletBalances = z.infer<typeof mobulaWalletBalancesSchema>;
+export type MobulaMarketData = z.infer<typeof mobulaMarketDataSchema>;
 
 export const parseMobulaWalletPortfolio = (
   data: unknown,
@@ -26,6 +33,10 @@ export const parseMobulaWalletBalances = (
   data: unknown,
 ): MobulaWalletBalances => {
   return mobulaWalletBalancesSchema.parse(data);
+};
+
+export const parseMobulaMarketData = (data: unknown): MobulaMarketData => {
+  return mobulaMarketDataSchema.parse(data);
 };
 
 const extractWalletBalanceValue = (data: {
@@ -49,6 +60,16 @@ export const extractWalletBalanceUsd = (
   payload: MobulaWalletPortfolio,
 ): number => {
   return extractWalletBalanceValue(payload.data);
+};
+
+export const extractBtcPriceUsd = (payload: MobulaMarketData): number => {
+  const price = payload.data.price;
+
+  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
+    throw new Error("BTC price missing");
+  }
+
+  return price;
 };
 
 export const mapMobulaWalletBalancesToUsd = (

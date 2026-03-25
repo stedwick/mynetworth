@@ -13,6 +13,7 @@ import { getMobulaAssets } from "@/app/api/crypto/price/service";
 import { mapMobulaAssetsToPrices } from "@/app/api/crypto/price/utils";
 import {
   getBtcWalletBalanceUsd,
+  getBtcUsdPrice,
   getWalletBalanceUsd,
 } from "@/app/api/crypto/wallet/service";
 import { isBtcAddress } from "@/app/api/crypto/wallet/utils";
@@ -201,18 +202,6 @@ const fetchCryptoPrices = async (
   return prices;
 };
 
-const fetchBtcPrice = async (apiKey: string): Promise<number> => {
-  const data = await getMobulaAssets(["BTC"], apiKey);
-  const prices = mapMobulaAssetsToPrices(data.dataArray ?? []);
-  const btcUsdPrice = prices.BTC;
-
-  if (typeof btcUsdPrice !== "number" || !Number.isFinite(btcUsdPrice)) {
-    throw new Error("BTC price missing");
-  }
-
-  return btcUsdPrice;
-};
-
 const fetchWalletBalances = async (
   addresses: string[],
   apiKey: string,
@@ -235,7 +224,7 @@ const fetchWalletBalances = async (
   }
 
   if (btcAddresses.length > 0) {
-    const btcUsdPrice = await fetchBtcPrice(apiKey);
+    const btcUsdPrice = await getBtcUsdPrice(apiKey);
 
     for (const batch of chunkList(btcAddresses, PRICE_BATCH_SIZE)) {
       const results = await Promise.all(

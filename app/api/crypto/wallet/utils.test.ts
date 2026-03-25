@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  extractBtcPriceUsd,
   convertSatoshisToUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
@@ -10,6 +11,7 @@ import {
   mapWalletBalanceToResponse,
   parseBtcUtxos,
   parseAddressParam,
+  parseMobulaMarketData,
   parseMobulaWalletPortfolio,
   sumBtcUtxoSatoshis,
 } from "./utils";
@@ -129,6 +131,48 @@ describe("extractWalletBalanceUsd", () => {
 
   it("throws when no balance field is present", () => {
     expect(() => extractWalletBalanceUsd({ data: {} })).toThrow();
+  });
+});
+
+describe("extractBtcPriceUsd", () => {
+  it("returns a positive finite BTC price", () => {
+    const price = extractBtcPriceUsd(
+      parseMobulaMarketData({
+        data: {
+          price: 70_571.64,
+        },
+      }),
+    );
+
+    expect(price).toBe(70_571.64);
+  });
+
+  it("throws when the BTC price is missing", () => {
+    expect(() => extractBtcPriceUsd(parseMobulaMarketData({ data: {} }))).toThrow(
+      "BTC price missing",
+    );
+  });
+
+  it("throws when the BTC price is zero", () => {
+    expect(() =>
+      extractBtcPriceUsd(
+        parseMobulaMarketData({
+          data: {
+            price: 0,
+          },
+        }),
+      ),
+    ).toThrow("BTC price missing");
+  });
+
+  it("throws when the BTC price is not finite", () => {
+    expect(() =>
+      extractBtcPriceUsd({
+        data: {
+          price: Number.POSITIVE_INFINITY,
+        },
+      }),
+    ).toThrow("BTC price missing");
   });
 });
 
