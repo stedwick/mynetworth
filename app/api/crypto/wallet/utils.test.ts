@@ -148,9 +148,9 @@ describe("extractBtcPriceUsd", () => {
   });
 
   it("throws when the BTC price is missing", () => {
-    expect(() => extractBtcPriceUsd(parseMobulaMarketData({ data: {} }))).toThrow(
-      "BTC price missing",
-    );
+    expect(() =>
+      extractBtcPriceUsd(parseMobulaMarketData({ data: {} })),
+    ).toThrow("BTC price missing");
   });
 
   it("throws when the BTC price is zero", () => {
