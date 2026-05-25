@@ -15,6 +15,10 @@ import {
 
 const MOBULA_WALLET_PORTFOLIO_URL =
   "https://api.mobula.io/api/1/wallet/portfolio";
+// Chain IDs map to Ethereum, BNB Smart Chain, Base, Arbitrum,
+// Polygon, Avalanche, Optimism, and Monad.
+const MOBULA_WALLET_PORTFOLIO_PARAMS =
+  "&cache=true&stale=3600&unlistedAssets=false&blockchains=1,56,solana,8453,42161,137,43114,10,sonic,143";
 const MOBULA_MARKET_DATA_URL = "https://api.mobula.io/api/1/market/data";
 const BTCSCAN_API_URL = "https://btcscan.org/api";
 
@@ -40,7 +44,7 @@ const getMobulaWalletBalance = async (address: string, apiKey: string) => {
   "use cache";
   cacheLife("hours");
 
-  const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}&cache=true&stale=3600&unlistedAssets=false`;
+  const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}${MOBULA_WALLET_PORTFOLIO_PARAMS}`;
   console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
 
   const response = await fetch(url, {
@@ -65,7 +69,7 @@ const getMobulaWalletBalances = async (
   "use cache";
   cacheLife("hours");
 
-  const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallets=${encodeURIComponent(addresses.join(","))}&cache=true&stale=3600&unlistedAssets=false`;
+  const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallets=${encodeURIComponent(addresses.join(","))}${MOBULA_WALLET_PORTFOLIO_PARAMS}`;
   console.info("[crypto/wallet] Fetching Mobula portfolios for:", addresses);
 
   const response = await fetch(url, {
