@@ -211,15 +211,8 @@ const fetchWalletBalances = async (
   const otherAddresses = addresses.filter((address) => !isBtcAddress(address));
 
   if (otherAddresses.length > 0) {
-    const results = await Promise.all(
-      otherAddresses.map(async (address) => ({
-        address,
-        balance: await getWalletBalanceUsd(address, apiKey),
-      })),
-    );
-
-    for (const result of results) {
-      balances[result.address] = result.balance;
+    for (const address of otherAddresses) {
+      balances[address] = await getWalletBalanceUsd(address, apiKey);
     }
   }
 

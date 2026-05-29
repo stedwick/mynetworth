@@ -1,4 +1,5 @@
 import { cacheLife } from "next/cache";
+import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
 import {
   mapMobulaAllAssetsToSymbols,
   mobulaAllDataSchema,
@@ -23,7 +24,7 @@ export const getMobulaAssets = async (symbols: string[], apiKey: string) => {
   });
 
   if (!response.ok) {
-    throw new Error("Mobula request failed");
+    await throwMobulaRequestError(response, "Mobula price request");
   }
 
   return parseMobulaMultiData(await response.json());
@@ -44,7 +45,7 @@ export const getMobulaListedSymbols = async (apiKey: string) => {
   });
 
   if (!response.ok) {
-    throw new Error("Mobula request failed");
+    await throwMobulaRequestError(response, "Mobula symbols request");
   }
 
   const data = mobulaAllDataSchema.parse(await response.json());

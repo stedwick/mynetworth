@@ -1,5 +1,7 @@
 import { cacheLife } from "next/cache";
 
+import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
+
 import {
   extractBtcPriceUsd,
   convertSatoshisToUsd,
@@ -55,7 +57,7 @@ const getMobulaWalletBalance = async (address: string, apiKey: string) => {
   });
 
   if (!response.ok) {
-    throw new Error("Mobula request failed");
+    await throwMobulaRequestError(response, "Mobula wallet portfolio request");
   }
 
   const data = parseMobulaWalletPortfolio(await response.json());
@@ -80,7 +82,7 @@ const getMobulaWalletBalances = async (
   });
 
   if (!response.ok) {
-    throw new Error("Mobula request failed");
+    await throwMobulaRequestError(response, "Mobula wallet portfolios request");
   }
 
   const data = parseMobulaWalletBalances(await response.json());
@@ -102,7 +104,7 @@ export const getBtcUsdPrice = async (apiKey: string): Promise<number> => {
   });
 
   if (!response.ok) {
-    throw new Error("Mobula BTC price request failed");
+    await throwMobulaRequestError(response, "Mobula BTC price request");
   }
 
   const data = parseMobulaMarketData(await response.json());
