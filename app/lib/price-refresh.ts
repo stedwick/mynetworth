@@ -30,6 +30,12 @@ export const normalizeWalletAddresses = (addresses: string[]): string[] => {
   return Array.from(seen).sort(compareStringsCaseInsensitive);
 };
 
+export const msUntilNextRequest = (
+  previousRequestStart: number,
+  now: number,
+  intervalMs: number,
+): number => Math.max(0, intervalMs - (now - previousRequestStart));
+
 export const chunkList = <T>(items: T[], size: number): T[][] => {
   if (size <= 0) return [];
 
