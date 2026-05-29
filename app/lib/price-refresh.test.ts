@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   chunkList,
+  msUntilNextRequest,
   normalizeSymbols,
   normalizeWalletAddresses,
 } from "./price-refresh";
@@ -26,6 +27,13 @@ describe("normalizeWalletAddresses", () => {
       "0x396343362be2A4dA1cE0C1C210945346fb82Aa49",
       "So11111111111111111111111111111111111111112",
     ]);
+  });
+});
+
+describe("msUntilNextRequest", () => {
+  it("waits for the remaining interval, or not at all once it has elapsed", () => {
+    expect(msUntilNextRequest(1_000, 1_200, 1_000)).toBe(800);
+    expect(msUntilNextRequest(1_000, 2_500, 1_000)).toBe(0);
   });
 });
 

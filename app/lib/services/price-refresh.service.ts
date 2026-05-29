@@ -6,6 +6,7 @@ import { sql } from "@/app/lib/db";
 import type { DB } from "@/app/lib/db-types";
 import {
   chunkList,
+  msUntilNextRequest,
   normalizeSymbols,
   normalizeWalletAddresses,
 } from "@/app/lib/price-refresh";
@@ -28,6 +29,10 @@ type RefreshResult = {
 };
 
 const PRICE_BATCH_SIZE = 50;
+const WALLET_REQUEST_INTERVAL_MS = 1000;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 const getRefreshableAssetsForUser = async (
   userId: string,
@@ -211,15 +216,18 @@ const fetchWalletBalances = async (
   const otherAddresses = addresses.filter((address) => !isBtcAddress(address));
 
   if (otherAddresses.length > 0) {
-    const results = await Promise.all(
-      otherAddresses.map(async (address) => ({
-        address,
-        balance: await getWalletBalanceUsd(address, apiKey),
-      })),
-    );
+    let previousRequestStart = 0;
 
-    for (const result of results) {
-      balances[result.address] = result.balance;
+    for (const address of otherAddresses) {
+      const waitMs = msUntilNextRequest(
+        previousRequestStart,
+        Date.now(),
+        WALLET_REQUEST_INTERVAL_MS,
+      );
+      if (waitMs > 0) await sleep(waitMs);
+
+      previousRequestStart = Date.now();
+      balances[address] = await getWalletBalanceUsd(address, apiKey);
     }
   }
 
