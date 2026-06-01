@@ -1,5 +1,3 @@
-import { cacheLife } from "next/cache";
-
 import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
 
 import {
@@ -20,14 +18,11 @@ const MOBULA_WALLET_PORTFOLIO_URL =
 // Chain IDs map to Ethereum, BNB Smart Chain, Base, Arbitrum,
 // Polygon, Avalanche, Optimism, and Monad.
 const MOBULA_WALLET_PORTFOLIO_PARAMS =
-  "&cache=true&stale=3600&unlistedAssets=false&blockchains=1,56,solana,8453,42161,137,43114,10,sonic,143";
+  "&unlistedAssets=false&blockchains=1,56,solana,8453,42161,137,43114,10,sonic,143";
 const MOBULA_MARKET_DATA_URL = "https://api.mobula.io/api/1/market/data";
 const BTCSCAN_API_URL = "https://btcscan.org/api";
 
 const getBtcUtxos = async (address: string) => {
-  "use cache";
-  cacheLife("hours");
-
   const utxoUrl = `${BTCSCAN_API_URL}/address/${encodeURIComponent(address)}/utxo`;
   console.info("[crypto/wallet] Fetching BTC UTXOs for:", address);
 
@@ -43,9 +38,6 @@ const getBtcUtxos = async (address: string) => {
 };
 
 const getMobulaWalletBalance = async (address: string, apiKey: string) => {
-  "use cache";
-  cacheLife("hours");
-
   const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}${MOBULA_WALLET_PORTFOLIO_PARAMS}`;
   console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
 
@@ -68,9 +60,6 @@ const getMobulaWalletBalances = async (
   addresses: string[],
   apiKey: string,
 ): Promise<Record<string, number>> => {
-  "use cache";
-  cacheLife("hours");
-
   const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallets=${encodeURIComponent(addresses.join(","))}${MOBULA_WALLET_PORTFOLIO_PARAMS}`;
   console.info("[crypto/wallet] Fetching Mobula portfolios for:", addresses);
 
@@ -90,9 +79,6 @@ const getMobulaWalletBalances = async (
 };
 
 export const getBtcUsdPrice = async (apiKey: string): Promise<number> => {
-  "use cache";
-  cacheLife("hours");
-
   const url = `${MOBULA_MARKET_DATA_URL}?asset=bitcoin`;
   console.info("[crypto/wallet] Fetching BTC price from Mobula market data");
 

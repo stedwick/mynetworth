@@ -1,4 +1,3 @@
-import { cacheLife } from "next/cache";
 import { getMobulaListedSymbols } from "../price/service";
 import {
   filterMobulaSymbols,
@@ -6,10 +5,7 @@ import {
   parseSearchQueryParam,
 } from "./utils";
 
-const getCachedSearchResults = async (query: string, apiKey: string) => {
-  "use cache";
-  cacheLife("days");
-
+const getSearchResults = async (query: string, apiKey: string) => {
   const symbols = await getMobulaListedSymbols(apiKey);
   return orderMobulaMatches(filterMobulaSymbols(symbols, query, 20), query).map(
     ({ symbol, name }) => ({ symbol, name }),
@@ -42,12 +38,11 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const matches = await getCachedSearchResults(query, apiKey);
+    const matches = await getSearchResults(query, apiKey);
 
     return Response.json(matches, {
       headers: {
-        "Cache-Control":
-          "public, max-age=86400, s-maxage=86400, stale-while-revalidate=60",
+        "Cache-Control": "no-store",
       },
     });
   } catch {

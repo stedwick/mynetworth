@@ -1,4 +1,3 @@
-import { cacheLife } from "next/cache";
 import {
   mapYahooSearchQuotesToMatches,
   orderYahooSearchMatches,
@@ -8,10 +7,7 @@ import {
 
 const YAHOO_SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
 
-const getCachedYahooSearchResults = async (query: string) => {
-  "use cache";
-  cacheLife("days");
-
+const getYahooSearchResults = async (query: string) => {
   const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
   const response = await fetch(url, {
     cache: "no-store",
@@ -40,12 +36,11 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const matches = await getCachedYahooSearchResults(query);
+    const matches = await getYahooSearchResults(query);
 
     return Response.json(matches, {
       headers: {
-        "Cache-Control":
-          "public, max-age=86400, s-maxage=86400, stale-while-revalidate=60",
+        "Cache-Control": "no-store",
       },
     });
   } catch {

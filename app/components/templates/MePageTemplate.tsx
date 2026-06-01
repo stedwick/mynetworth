@@ -25,7 +25,7 @@ export default function MePageTemplate({
             {formatUsd(netWorth)}
           </h1>
           <p className="text-sm text-slate-500 dark:text-white/60">
-            Prices are delayed by one hour.
+            Prices refresh from live APIs.
           </p>
         </div>
         <form action={refreshAssetPrices} className="w-full sm:w-auto">

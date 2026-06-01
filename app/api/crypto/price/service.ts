@@ -1,4 +1,3 @@
-import { cacheLife } from "next/cache";
 import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
 import {
   mapMobulaAllAssetsToSymbols,
@@ -10,9 +9,6 @@ const MOBULA_ALL_ASSETS_URL = "https://api.mobula.io/api/1/all";
 const MOBULA_MULTI_DATA_URL = "https://api.mobula.io/api/1/market/multi-data";
 
 export const getMobulaAssets = async (symbols: string[], apiKey: string) => {
-  "use cache";
-  cacheLife("hours");
-
   const url = `${MOBULA_MULTI_DATA_URL}?symbols=${encodeURIComponent(symbols.join(","))}`;
   console.info("[crypto/price] Fetching Mobula prices for:", symbols.join(","));
 
@@ -31,9 +27,6 @@ export const getMobulaAssets = async (symbols: string[], apiKey: string) => {
 };
 
 export const getMobulaListedSymbols = async (apiKey: string) => {
-  "use cache";
-  cacheLife("days");
-
   const url = `${MOBULA_ALL_ASSETS_URL}?fields=symbol,name,market_cap`;
   console.info("[crypto/price] Fetching Mobula listed symbols");
 

@@ -37,18 +37,11 @@ const sleep = (ms: number): Promise<void> =>
 const getRefreshableAssetsForUser = async (
   userId: string,
 ): Promise<AssetRow[]> => {
-  const refreshSecondsRaw = process.env.PRICE_REFRESH_SECONDS;
-  const refreshSeconds = refreshSecondsRaw
-    ? Number.parseInt(refreshSecondsRaw, 10)
-    : 3600;
-  const hasRefreshLimit = Number.isFinite(refreshSeconds) && refreshSeconds > 0;
-
   const query = `
     SELECT *
     FROM assets
     WHERE user_id = $1
       AND kind <> 'manual'
-      ${hasRefreshLimit ? `AND price_updated_at < now() - interval '${refreshSeconds} seconds'` : ""}
   `;
   const rows = (await sql.query(query, [userId])) as AssetRow[];
 
