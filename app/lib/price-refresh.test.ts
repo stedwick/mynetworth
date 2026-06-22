@@ -4,6 +4,7 @@ import {
   msUntilNextRequest,
   normalizeSymbols,
   normalizeWalletAddresses,
+  WALLET_REQUEST_INTERVAL_MS,
 } from "./price-refresh";
 
 describe("normalizeSymbols", () => {
@@ -32,8 +33,12 @@ describe("normalizeWalletAddresses", () => {
 
 describe("msUntilNextRequest", () => {
   it("waits for the remaining interval, or not at all once it has elapsed", () => {
-    expect(msUntilNextRequest(1_000, 1_200, 1_000)).toBe(800);
-    expect(msUntilNextRequest(1_000, 2_500, 1_000)).toBe(0);
+    expect(
+      msUntilNextRequest(1_000, 1_200, WALLET_REQUEST_INTERVAL_MS),
+    ).toBe(2_800);
+    expect(
+      msUntilNextRequest(1_000, 4_500, WALLET_REQUEST_INTERVAL_MS),
+    ).toBe(0);
   });
 });
 

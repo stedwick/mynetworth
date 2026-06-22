@@ -9,6 +9,7 @@ import {
   msUntilNextRequest,
   normalizeSymbols,
   normalizeWalletAddresses,
+  WALLET_REQUEST_INTERVAL_MS,
 } from "@/app/lib/price-refresh";
 import { getMobulaAssets } from "@/app/api/crypto/price/service";
 import { mapMobulaAssetsToPrices } from "@/app/api/crypto/price/utils";
@@ -29,7 +30,6 @@ type RefreshResult = {
 };
 
 const PRICE_BATCH_SIZE = 50;
-const WALLET_REQUEST_INTERVAL_MS = 1000;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
