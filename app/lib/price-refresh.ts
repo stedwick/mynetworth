@@ -1,7 +1,7 @@
 import { isSupportedWalletAddress } from "@/app/api/crypto/wallet/utils";
 import { compareStringsCaseInsensitive } from "@/app/lib/string-utils";
 
-export const WALLET_REQUEST_INTERVAL_MS = 3_000;
+export const WALLET_REQUEST_INTERVAL_MS = 6_000;
 
 export const normalizeSymbols = (symbols: string[]): string[] => {
   const seen = new Set<string>();

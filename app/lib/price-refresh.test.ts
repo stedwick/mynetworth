@@ -35,9 +35,9 @@ describe("msUntilNextRequest", () => {
   it("waits for the remaining interval, or not at all once it has elapsed", () => {
     expect(
       msUntilNextRequest(1_000, 1_200, WALLET_REQUEST_INTERVAL_MS),
-    ).toBe(2_800);
+    ).toBe(5_800);
     expect(
-      msUntilNextRequest(1_000, 4_500, WALLET_REQUEST_INTERVAL_MS),
+      msUntilNextRequest(1_000, 7_500, WALLET_REQUEST_INTERVAL_MS),
     ).toBe(0);
   });
 });
