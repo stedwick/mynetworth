@@ -13,11 +13,10 @@ import {
 import { getMobulaAssets } from "@/app/api/crypto/price/service";
 import { mapMobulaAssetsToPrices } from "@/app/api/crypto/price/utils";
 import {
-  getBtcWalletBalanceUsd,
-  getBtcUsdPrice,
   getWalletBalanceUsd,
+  type WalletApiKeys,
 } from "@/app/api/crypto/wallet/service";
-import { isBtcAddress } from "@/app/api/crypto/wallet/utils";
+import { isSolAddress } from "@/app/api/crypto/wallet/utils";
 import { getYahooQuotes } from "@/app/api/stocks/price/service";
 import { mapYahooQuotesToPrices } from "@/app/api/stocks/price/utils";
 
@@ -209,43 +208,21 @@ const fetchCryptoPrices = async (
 
 const fetchWalletBalances = async (
   addresses: string[],
-  apiKey: string,
+  apiKeys: WalletApiKeys,
 ): Promise<Record<string, number>> => {
   const balances: Record<string, number> = {};
-  const btcAddresses = addresses.filter((address) => isBtcAddress(address));
-  const otherAddresses = addresses.filter((address) => !isBtcAddress(address));
+  let previousRequestStart = 0;
 
-  if (otherAddresses.length > 0) {
-    let previousRequestStart = 0;
+  for (const address of addresses) {
+    const waitMs = msUntilNextRequest(
+      previousRequestStart,
+      Date.now(),
+      WALLET_REQUEST_INTERVAL_MS,
+    );
+    if (waitMs > 0) await sleep(waitMs);
 
-    for (const address of otherAddresses) {
-      const waitMs = msUntilNextRequest(
-        previousRequestStart,
-        Date.now(),
-        WALLET_REQUEST_INTERVAL_MS,
-      );
-      if (waitMs > 0) await sleep(waitMs);
-
-      previousRequestStart = Date.now();
-      balances[address] = await getWalletBalanceUsd(address, apiKey);
-    }
-  }
-
-  if (btcAddresses.length > 0) {
-    const btcUsdPrice = await getBtcUsdPrice(apiKey);
-
-    for (const batch of chunkList(btcAddresses, PRICE_BATCH_SIZE)) {
-      const results = await Promise.all(
-        batch.map(async (address) => ({
-          address,
-          balance: await getBtcWalletBalanceUsd(address, btcUsdPrice),
-        })),
-      );
-
-      for (const result of results) {
-        balances[result.address] = result.balance;
-      }
-    }
+    previousRequestStart = Date.now();
+    balances[address] = await getWalletBalanceUsd(address, apiKeys);
   }
 
   return balances;
@@ -280,11 +257,20 @@ export const refreshAssetPricesForUser = async (
 
   await premarkAssetsByTargets(stockSymbols, cryptoSymbols, walletAddresses);
 
-  const needsMobula = cryptoSymbols.length > 0 || walletAddresses.length > 0;
+  const needsMobula =
+    cryptoSymbols.length > 0 || walletAddresses.some(isSolAddress);
+  const needsMoralis = walletAddresses.some(
+    (address) => !isSolAddress(address),
+  );
   const mobulaApiKey = process.env.MOBULA_API_KEY;
+  const moralisApiKey = process.env.MORALIS_API_KEY;
 
   if (needsMobula && !mobulaApiKey) {
     throw new Error("Missing MOBULA_API_KEY");
+  }
+
+  if (needsMoralis && !moralisApiKey) {
+    throw new Error("Missing MORALIS_API_KEY");
   }
 
   const stockPrices =
@@ -297,7 +283,10 @@ export const refreshAssetPricesForUser = async (
 
   const walletBalances =
     walletAddresses.length > 0
-      ? await fetchWalletBalances(walletAddresses, mobulaApiKey ?? "")
+      ? await fetchWalletBalances(walletAddresses, {
+          moralisApiKey: moralisApiKey ?? "",
+          mobulaApiKey: mobulaApiKey ?? "",
+        })
       : {};
 
   await updateAssetsBySymbol("stock", stockPrices);

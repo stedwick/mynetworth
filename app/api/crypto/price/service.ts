@@ -1,5 +1,5 @@
 import { cacheLife } from "next/cache";
-import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
+import { logApiRequest } from "@/app/lib/fetch-log";
 import {
   mapMobulaAllAssetsToSymbols,
   mobulaAllDataSchema,
@@ -14,20 +14,24 @@ export const getMobulaAssets = async (symbols: string[], apiKey: string) => {
   cacheLife("hours");
 
   const url = `${MOBULA_MULTI_DATA_URL}?symbols=${encodeURIComponent(symbols.join(","))}`;
-  console.info("[crypto/price] Fetching Mobula prices for:", symbols.join(","));
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
+  return logApiRequest(
+    "Mobula prices",
+    url,
+    {
+      headers: {
+        Authorization: apiKey,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula price request");
-  }
-
-  return parseMobulaMultiData(await response.json());
+    (data) => {
+      const value = parseMobulaMultiData(data);
+      return {
+        value,
+        summary: `${symbols.join(",")} → ${value.dataArray?.length ?? 0} assets`,
+      };
+    },
+  );
 };
 
 export const getMobulaListedSymbols = async (apiKey: string) => {
@@ -35,19 +39,21 @@ export const getMobulaListedSymbols = async (apiKey: string) => {
   cacheLife("days");
 
   const url = `${MOBULA_ALL_ASSETS_URL}?fields=symbol,name,market_cap`;
-  console.info("[crypto/price] Fetching Mobula listed symbols");
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
+  return logApiRequest(
+    "Mobula listed symbols",
+    url,
+    {
+      headers: {
+        Authorization: apiKey,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula symbols request");
-  }
-
-  const data = mobulaAllDataSchema.parse(await response.json());
-  return mapMobulaAllAssetsToSymbols(data.data);
+    (data) => {
+      const value = mapMobulaAllAssetsToSymbols(
+        mobulaAllDataSchema.parse(data).data,
+      );
+      return { value, summary: `${value.length} symbols` };
+    },
+  );
 };

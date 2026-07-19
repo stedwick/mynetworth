@@ -11,7 +11,14 @@ export const getYahooQuotes = async (
   "use cache";
   cacheLife("hours");
 
-  console.info("[stocks/price] Fetching Yahoo quotes for:", symbols.join(","));
+  const startedAt = Date.now();
   const result = await yahooFinance.quote(symbols, { return: "array" });
-  return parseYahooQuotes(result);
+  const elapsedMs = Date.now() - startedAt;
+
+  const quotes = parseYahooQuotes(result);
+  console.info(
+    `[api] Yahoo quotes: ${symbols.join(",")} → ${quotes.length} quotes (${elapsedMs}ms)`,
+  );
+
+  return quotes;
 };

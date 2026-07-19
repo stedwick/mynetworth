@@ -9,19 +9,22 @@ const mobulaWalletPortfolioSchema = z.looseObject({
   data: mobulaWalletBalanceSchema,
 });
 
-const mobulaWalletBalancesSchema = z.looseObject({
-  data: z.unknown(),
+const moralisNetWorthSchema = z.looseObject({
+  total_networth_usd: z.string(),
 });
 
-const mobulaMarketDataSchema = z.looseObject({
-  data: z.looseObject({
-    price: z.number().nullable().optional(),
-  }),
+const moralisWalletTokensSchema = z.looseObject({
+  cursor: z.string().nullable(),
+  result: z.array(
+    z.looseObject({
+      usdValue: z.number().nullable().optional(),
+    }),
+  ),
 });
 
 export type MobulaWalletPortfolio = z.infer<typeof mobulaWalletPortfolioSchema>;
-export type MobulaWalletBalances = z.infer<typeof mobulaWalletBalancesSchema>;
-export type MobulaMarketData = z.infer<typeof mobulaMarketDataSchema>;
+export type MoralisNetWorth = z.infer<typeof moralisNetWorthSchema>;
+export type MoralisWalletTokens = z.infer<typeof moralisWalletTokensSchema>;
 
 export const parseMobulaWalletPortfolio = (
   data: unknown,
@@ -29,14 +32,14 @@ export const parseMobulaWalletPortfolio = (
   return mobulaWalletPortfolioSchema.parse(data);
 };
 
-export const parseMobulaWalletBalances = (
-  data: unknown,
-): MobulaWalletBalances => {
-  return mobulaWalletBalancesSchema.parse(data);
+export const parseMoralisNetWorth = (data: unknown): MoralisNetWorth => {
+  return moralisNetWorthSchema.parse(data);
 };
 
-export const parseMobulaMarketData = (data: unknown): MobulaMarketData => {
-  return mobulaMarketDataSchema.parse(data);
+export const parseMoralisWalletTokens = (
+  data: unknown,
+): MoralisWalletTokens => {
+  return moralisWalletTokensSchema.parse(data);
 };
 
 const extractWalletBalanceValue = (data: {
@@ -52,141 +55,34 @@ const extractWalletBalanceValue = (data: {
   return balance;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-
 export const extractWalletBalanceUsd = (
   payload: MobulaWalletPortfolio,
 ): number => {
   return extractWalletBalanceValue(payload.data);
 };
 
-export const extractBtcPriceUsd = (payload: MobulaMarketData): number => {
-  const price = payload.data.price;
+export const extractNetWorthUsd = (payload: MoralisNetWorth): number => {
+  const netWorth = Number.parseFloat(payload.total_networth_usd);
 
-  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
-    throw new Error("BTC price missing");
+  if (!Number.isFinite(netWorth)) {
+    throw new Error("Net worth missing");
   }
 
-  return price;
+  return netWorth;
 };
 
-export const mapMobulaWalletBalancesToUsd = (
-  payload: MobulaWalletBalances,
-): Record<string, number> => {
-  const balances: Record<string, number> = {};
-  const data = payload.data;
+export const sumMoralisTokenUsdValues = (
+  payload: MoralisWalletTokens,
+): number => {
+  let total = 0;
 
-  if (Array.isArray(data)) {
-    for (const entry of data) {
-      if (!isRecord(entry)) continue;
-      const wallet =
-        typeof entry.wallet === "string"
-          ? entry.wallet
-          : typeof entry.address === "string"
-            ? entry.address
-            : "";
-      const address = wallet.trim();
-      if (!address) continue;
-      balances[address] = extractWalletBalanceValue(entry);
+  for (const token of payload.result) {
+    if (typeof token.usdValue === "number" && Number.isFinite(token.usdValue)) {
+      total += token.usdValue;
     }
-
-    return balances;
   }
 
-  if (isRecord(data)) {
-    const singleWallet =
-      typeof data.wallet === "string"
-        ? data.wallet
-        : typeof data.address === "string"
-          ? data.address
-          : null;
-
-    if (singleWallet) {
-      const trimmed = singleWallet.trim();
-      if (trimmed) {
-        try {
-          balances[trimmed] = extractWalletBalanceValue(data);
-          return balances;
-        } catch {
-          // Fall through to other parsing strategies.
-        }
-      }
-    }
-
-    const balancesRecord = isRecord(data.balances) ? data.balances : null;
-    if (balancesRecord) {
-      for (const [address, entry] of Object.entries(balancesRecord)) {
-        const trimmed = address.trim();
-        if (!trimmed) continue;
-        if (typeof entry === "number" && Number.isFinite(entry)) {
-          balances[trimmed] = entry;
-          continue;
-        }
-        if (isRecord(entry)) {
-          balances[trimmed] = extractWalletBalanceValue(entry);
-        }
-      }
-    }
-
-    const entries = Array.isArray(data.wallets)
-      ? data.wallets
-      : Array.isArray(data.assets)
-        ? data.assets
-        : null;
-
-    if (entries) {
-      if (
-        entries.length === 1 &&
-        typeof entries[0] === "string" &&
-        (typeof data.total_wallet_balance === "number" ||
-          typeof data.balance_usd === "number")
-      ) {
-        const trimmed = entries[0].trim();
-        if (trimmed) {
-          balances[trimmed] = extractWalletBalanceValue(data);
-          return balances;
-        }
-      }
-
-      for (const entry of entries) {
-        if (typeof entry === "string") {
-          const trimmed = entry.trim();
-          if (!trimmed) continue;
-          if (balancesRecord && trimmed in balancesRecord) {
-            continue;
-          }
-        } else if (isRecord(entry)) {
-          const wallet =
-            typeof entry.wallet === "string"
-              ? entry.wallet
-              : typeof entry.address === "string"
-                ? entry.address
-                : "";
-          const address = wallet.trim();
-          if (!address) continue;
-          balances[address] = extractWalletBalanceValue(entry);
-        }
-      }
-    }
-
-    for (const [address, entry] of Object.entries(data)) {
-      if (!isSupportedWalletAddress(address)) continue;
-      if (address in balances) continue;
-      if (typeof entry === "number" && Number.isFinite(entry)) {
-        balances[address] = entry;
-        continue;
-      }
-      if (isRecord(entry)) {
-        balances[address] = extractWalletBalanceValue(entry);
-      }
-    }
-
-    return balances;
-  }
-
-  return balances;
+  return total;
 };
 
 export const parseAddressParam = (param: string | null): string | null => {
@@ -208,17 +104,6 @@ const supportedWalletAddressSchema = z.union([
   btcAddressSchema,
 ]);
 
-const btcUtxoSchema = z.looseObject({
-  value: z.number().optional(),
-  status: z
-    .looseObject({
-      confirmed: z.boolean().optional(),
-    })
-    .optional(),
-});
-
-const btcUtxoArraySchema = z.array(btcUtxoSchema);
-
 export const isEthAddress = (address: string): boolean => {
   return ethAddressSchema.safeParse(address).success;
 };
@@ -233,31 +118,6 @@ export const isSolAddress = (address: string): boolean => {
 
 export const isSupportedWalletAddress = (address: string): boolean => {
   return supportedWalletAddressSchema.safeParse(address).success;
-};
-
-export type BtcUtxo = z.infer<typeof btcUtxoSchema>;
-
-export const parseBtcUtxos = (data: unknown): BtcUtxo[] => {
-  return btcUtxoArraySchema.parse(data);
-};
-
-export const sumBtcUtxoSatoshis = (utxos: BtcUtxo[]): number => {
-  let total = 0;
-
-  for (const utxo of utxos) {
-    if (typeof utxo.value === "number" && Number.isFinite(utxo.value)) {
-      total += utxo.value;
-    }
-  }
-
-  return total;
-};
-
-export const convertSatoshisToUsd = (
-  satoshis: number,
-  btcUsdPrice: number,
-): number => {
-  return (satoshis / 1e8) * btcUsdPrice;
 };
 
 export const mapWalletBalanceToResponse = (

@@ -1,4 +1,5 @@
 import { cacheLife } from "next/cache";
+import { logApiRequest } from "@/app/lib/fetch-log";
 import {
   mapYahooSearchQuotesToMatches,
   orderYahooSearchMatches,
@@ -13,18 +14,21 @@ const getCachedYahooSearchResults = async (query: string) => {
   cacheLife("days");
 
   const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
-  const response = await fetch(url, {
-    cache: "no-store",
-  });
 
-  if (!response.ok) {
-    throw new Error("Yahoo search request failed");
-  }
-
-  const data = parseYahooSearchResponse(await response.json());
-  return orderYahooSearchMatches(
-    mapYahooSearchQuotesToMatches(data.quotes ?? []),
-    query,
+  return logApiRequest(
+    "Yahoo search",
+    url,
+    {
+      cache: "no-store",
+    },
+    (data) => {
+      const parsed = parseYahooSearchResponse(data);
+      const value = orderYahooSearchMatches(
+        mapYahooSearchQuotesToMatches(parsed.quotes ?? []),
+        query,
+      );
+      return { value, summary: `"${query}" → ${value.length} matches` };
+    },
   );
 };
 
