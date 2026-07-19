@@ -1,4 +1,6 @@
 import {
+  isBtcAddress,
+  isEthAddress,
   isSupportedWalletAddress,
   mapWalletBalanceToResponse,
   parseAddressParam,
@@ -6,20 +8,6 @@ import {
 import { getWalletBalanceUsd } from "./service";
 
 export async function GET(request: Request): Promise<Response> {
-  const apiKey = process.env.MOBULA_API_KEY;
-
-  if (!apiKey) {
-    return Response.json(
-      { error: "Missing MOBULA_API_KEY" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      },
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const addressParam = parseAddressParam(searchParams.get("address"));
 
@@ -39,8 +27,39 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  const usesMoralis = isBtcAddress(addressParam) || isEthAddress(addressParam);
+  const moralisApiKey = process.env.MORALIS_API_KEY;
+  const mobulaApiKey = process.env.MOBULA_API_KEY;
+
+  if (usesMoralis && !moralisApiKey) {
+    return Response.json(
+      { error: "Missing MORALIS_API_KEY" },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
+
+  if (!usesMoralis && !mobulaApiKey) {
+    return Response.json(
+      { error: "Missing MOBULA_API_KEY" },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
+
   try {
-    const totalBalanceUsd = await getWalletBalanceUsd(addressParam, apiKey);
+    const totalBalanceUsd = await getWalletBalanceUsd(addressParam, {
+      moralisApiKey: moralisApiKey ?? "",
+      mobulaApiKey: mobulaApiKey ?? "",
+    });
     const responseBody = mapWalletBalanceToResponse(
       addressParam,
       totalBalanceUsd,
@@ -54,7 +73,7 @@ export async function GET(request: Request): Promise<Response> {
     });
   } catch {
     return Response.json(
-      { error: "Mobula request failed" },
+      { error: "Wallet balance request failed" },
       {
         status: 502,
         headers: {

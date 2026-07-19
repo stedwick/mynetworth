@@ -1,19 +1,17 @@
 import { describe, expect, it } from "bun:test";
 import {
-  extractBtcPriceUsd,
-  convertSatoshisToUsd,
+  extractNetWorthUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
   isEthAddress,
   isSolAddress,
   isSupportedWalletAddress,
-  mapMobulaWalletBalancesToUsd,
   mapWalletBalanceToResponse,
-  parseBtcUtxos,
   parseAddressParam,
-  parseMobulaMarketData,
   parseMobulaWalletPortfolio,
-  sumBtcUtxoSatoshis,
+  parseMoralisNetWorth,
+  parseMoralisWalletTokens,
+  sumMoralisTokenUsdValues,
 } from "./utils";
 
 describe("parseAddressParam", () => {
@@ -85,16 +83,6 @@ describe("isSupportedWalletAddress", () => {
   });
 });
 
-describe("parseBtcUtxos", () => {
-  it("accepts a list of BTC UTXOs", () => {
-    const result = parseBtcUtxos([
-      { txid: "abc", vout: 0, value: 1200, status: { confirmed: true } },
-    ]);
-
-    expect(result).toHaveLength(1);
-  });
-});
-
 describe("parseMobulaWalletPortfolio", () => {
   it("accepts a wallet portfolio payload", () => {
     const result = parseMobulaWalletPortfolio({
@@ -134,138 +122,65 @@ describe("extractWalletBalanceUsd", () => {
   });
 });
 
-describe("extractBtcPriceUsd", () => {
-  it("returns a positive finite BTC price", () => {
-    const price = extractBtcPriceUsd(
-      parseMobulaMarketData({
-        data: {
-          price: 70_571.64,
-        },
-      }),
-    );
+describe("parseMoralisNetWorth", () => {
+  it("accepts a net worth payload", () => {
+    const result = parseMoralisNetWorth({
+      total_networth_usd: "11679.84",
+      chains: [],
+    });
 
-    expect(price).toBe(70_571.64);
-  });
-
-  it("throws when the BTC price is missing", () => {
-    expect(() =>
-      extractBtcPriceUsd(parseMobulaMarketData({ data: {} })),
-    ).toThrow("BTC price missing");
-  });
-
-  it("throws when the BTC price is zero", () => {
-    expect(() =>
-      extractBtcPriceUsd(
-        parseMobulaMarketData({
-          data: {
-            price: 0,
-          },
-        }),
-      ),
-    ).toThrow("BTC price missing");
-  });
-
-  it("throws when the BTC price is not finite", () => {
-    expect(() =>
-      extractBtcPriceUsd({
-        data: {
-          price: Number.POSITIVE_INFINITY,
-        },
-      }),
-    ).toThrow("BTC price missing");
+    expect(result.total_networth_usd).toBe("11679.84");
   });
 });
 
-describe("mapMobulaWalletBalancesToUsd", () => {
-  it("maps array or record payloads to address balances", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: [
-        {
-          wallet: "0xabc",
-          total_wallet_balance: 12.34,
-        },
-        {
-          address: "So11111111111111111111111111111111111111112",
-          balance_usd: 56.78,
-        },
+describe("extractNetWorthUsd", () => {
+  it("parses the net worth string to a number", () => {
+    const netWorth = extractNetWorthUsd({
+      total_networth_usd: "11679.84",
+    });
+
+    expect(netWorth).toBe(11679.84);
+  });
+
+  it("throws when the net worth is not numeric", () => {
+    expect(() =>
+      extractNetWorthUsd({ total_networth_usd: "not-a-number" }),
+    ).toThrow("Net worth missing");
+  });
+});
+
+describe("parseMoralisWalletTokens", () => {
+  it("accepts a wallet tokens payload with a cursor", () => {
+    const result = parseMoralisWalletTokens({
+      cursor: "next-page",
+      result: [{ usdValue: 10896.44, symbol: "BTC" }],
+    });
+
+    expect(result.cursor).toBe("next-page");
+    expect(result.result).toHaveLength(1);
+  });
+
+  it("accepts a null cursor", () => {
+    const result = parseMoralisWalletTokens({ cursor: null, result: [] });
+
+    expect(result.cursor).toBeNull();
+  });
+});
+
+describe("sumMoralisTokenUsdValues", () => {
+  it("sums usd values and skips invalid entries", () => {
+    const total = sumMoralisTokenUsdValues({
+      cursor: null,
+      result: [
+        { usdValue: 100.5 },
+        { usdValue: 200.25 },
+        { usdValue: null },
+        { usdValue: Number.NaN },
+        {},
       ],
     });
 
-    expect(result).toEqual({
-      "0xabc": 12.34,
-      So11111111111111111111111111111111111111112: 56.78,
-    });
-
-    const recordResult = mapMobulaWalletBalancesToUsd({
-      data: {
-        "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": { balance_usd: 90.12 },
-      },
-    });
-
-    expect(recordResult).toEqual({
-      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": 90.12,
-    });
-  });
-
-  it("maps wallet list payloads to address balances", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: {
-        wallets: [
-          {
-            wallet: "0xfeed",
-            total_wallet_balance: 44.55,
-          },
-        ],
-      },
-    });
-
-    expect(result).toEqual({ "0xfeed": 44.55 });
-  });
-
-  it("maps wallet strings with balances record payloads", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: {
-        wallets: ["0xabc"],
-        balances: {
-          "0xabc": { balance_usd: 12.34 },
-        },
-        balances_length: 1,
-      },
-    });
-
-    expect(result).toEqual({ "0xabc": 12.34 });
-  });
-
-  it("maps a single wallet with total balance at the root", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: {
-        wallets: ["0x396343362be2A4dA1cE0C1C210945346fb82Aa49"],
-        total_wallet_balance: 99.99,
-      },
-    });
-
-    expect(result).toEqual({
-      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": 99.99,
-    });
-  });
-});
-
-describe("sumBtcUtxoSatoshis", () => {
-  it("sums satoshi values and skips invalid entries", () => {
-    const result = sumBtcUtxoSatoshis([
-      { value: 1000 },
-      { value: 2500 },
-      { value: Number.NaN },
-      {},
-    ]);
-
-    expect(result).toBe(3500);
-  });
-});
-
-describe("convertSatoshisToUsd", () => {
-  it("converts satoshis to USD using the BTC price", () => {
-    expect(convertSatoshisToUsd(100_000_000, 50_000)).toBe(50_000);
+    expect(total).toBe(300.75);
   });
 });
 

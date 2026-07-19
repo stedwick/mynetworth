@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
 
-import { formatMobulaRequestError } from "./mobula-errors";
+import { formatRequestError } from "./request-errors";
 
-describe("formatMobulaRequestError", () => {
-  it("includes the Mobula status and response body", () => {
+describe("formatRequestError", () => {
+  it("includes the status and response body", () => {
     expect(
-      formatMobulaRequestError({
+      formatRequestError({
         body: '  {"message":"Invalid blockchain"}  ',
         requestName: "Mobula wallet portfolio request",
         status: 400,

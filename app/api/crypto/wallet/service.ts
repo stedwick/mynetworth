@@ -1,18 +1,18 @@
 import { cacheLife } from "next/cache";
 
-import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
+import { logApiRequest } from "@/app/lib/fetch-log";
+import { formatUsd } from "@/app/lib/networth";
 
 import {
-  extractBtcPriceUsd,
-  convertSatoshisToUsd,
+  extractNetWorthUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
-  mapMobulaWalletBalancesToUsd,
-  parseBtcUtxos,
-  parseMobulaMarketData,
-  parseMobulaWalletBalances,
+  isEthAddress,
   parseMobulaWalletPortfolio,
-  sumBtcUtxoSatoshis,
+  parseMoralisNetWorth,
+  parseMoralisWalletTokens,
+  sumMoralisTokenUsdValues,
+  type MoralisWalletTokens,
 } from "./utils";
 
 const MOBULA_WALLET_PORTFOLIO_URL =
@@ -21,25 +21,24 @@ const MOBULA_WALLET_PORTFOLIO_URL =
 // Polygon, Avalanche, Optimism, and Monad.
 const MOBULA_WALLET_PORTFOLIO_PARAMS =
   "&cache=true&stale=3600&unlistedAssets=false&blockchains=1,56,solana,8453,42161,137,43114,10,sonic,143";
-const MOBULA_MARKET_DATA_URL = "https://api.mobula.io/api/1/market/data";
-const BTCSCAN_API_URL = "https://btcscan.org/api";
+const MORALIS_NET_WORTH_URL = "https://deep-index.moralis.io/api/v2.2/wallets";
+const MORALIS_WALLET_TOKENS_URL = "https://api.moralis.com/v1/wallets";
+// Moralis chain slugs map to Ethereum, BNB Smart Chain, Base, Arbitrum,
+// Polygon, Avalanche, Optimism, and Monad.
+const MORALIS_EVM_CHAINS = [
+  "eth",
+  "bsc",
+  "base",
+  "arbitrum",
+  "polygon",
+  "avalanche",
+  "optimism",
+  "monad",
+];
 
-const getBtcUtxos = async (address: string) => {
-  "use cache";
-  cacheLife("hours");
-
-  const utxoUrl = `${BTCSCAN_API_URL}/address/${encodeURIComponent(address)}/utxo`;
-  console.info("[crypto/wallet] Fetching BTC UTXOs for:", address);
-
-  const utxoResponse = await fetch(utxoUrl, {
-    cache: "no-store",
-  });
-
-  if (!utxoResponse.ok) {
-    throw new Error("BTC UTXO request failed");
-  }
-
-  return parseBtcUtxos(await utxoResponse.json());
+export type WalletApiKeys = {
+  moralisApiKey: string;
+  mobulaApiKey: string;
 };
 
 const getMobulaWalletBalance = async (address: string, apiKey: string) => {
@@ -47,100 +46,101 @@ const getMobulaWalletBalance = async (address: string, apiKey: string) => {
   cacheLife("hours");
 
   const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallet=${encodeURIComponent(address)}${MOBULA_WALLET_PORTFOLIO_PARAMS}`;
-  console.info("[crypto/wallet] Fetching Mobula portfolio for:", address);
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
+  return logApiRequest(
+    "Mobula wallet portfolio",
+    url,
+    {
+      headers: {
+        Authorization: apiKey,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula wallet portfolio request");
-  }
-
-  const data = parseMobulaWalletPortfolio(await response.json());
-  return extractWalletBalanceUsd(data);
+    (data) => {
+      const value = extractWalletBalanceUsd(parseMobulaWalletPortfolio(data));
+      return { value, summary: `${address} → ${formatUsd(value)}` };
+    },
+  );
 };
 
-const getMobulaWalletBalances = async (
-  addresses: string[],
+const getMoralisEvmNetWorthUsd = async (
+  address: string,
   apiKey: string,
-): Promise<Record<string, number>> => {
+): Promise<number> => {
   "use cache";
   cacheLife("hours");
 
-  const url = `${MOBULA_WALLET_PORTFOLIO_URL}?wallets=${encodeURIComponent(addresses.join(","))}${MOBULA_WALLET_PORTFOLIO_PARAMS}`;
-  console.info("[crypto/wallet] Fetching Mobula portfolios for:", addresses);
+  const chainParams = MORALIS_EVM_CHAINS.map(
+    (chain) => `chains=${encodeURIComponent(chain)}`,
+  ).join("&");
+  const url = `${MORALIS_NET_WORTH_URL}/${encodeURIComponent(address)}/net-worth?${chainParams}&exclude_spam=true`;
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
+  return logApiRequest(
+    "Moralis net worth",
+    url,
+    {
+      headers: {
+        "X-API-Key": apiKey,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula wallet portfolios request");
-  }
-
-  const data = parseMobulaWalletBalances(await response.json());
-  return mapMobulaWalletBalancesToUsd(data);
+    (data) => {
+      const value = extractNetWorthUsd(parseMoralisNetWorth(data));
+      return { value, summary: `${address} → ${formatUsd(value)}` };
+    },
+  );
 };
 
-export const getBtcUsdPrice = async (apiKey: string): Promise<number> => {
+const getMoralisBtcBalanceUsd = async (
+  address: string,
+  apiKey: string,
+): Promise<number> => {
   "use cache";
   cacheLife("hours");
 
-  const url = `${MOBULA_MARKET_DATA_URL}?asset=bitcoin`;
-  console.info("[crypto/wallet] Fetching BTC price from Mobula market data");
+  let total = 0;
+  let cursor: string | null = null;
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
-    },
-    cache: "no-store",
-  });
+  do {
+    const cursorParam: string = cursor
+      ? `&cursor=${encodeURIComponent(cursor)}`
+      : "";
+    const url: string = `${MORALIS_WALLET_TOKENS_URL}/${encodeURIComponent(address)}/tokens?limit=100${cursorParam}`;
 
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula BTC price request");
-  }
+    const page: MoralisWalletTokens = await logApiRequest(
+      "Moralis BTC tokens",
+      url,
+      {
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+        cache: "no-store",
+      },
+      (data) => {
+        const value = parseMoralisWalletTokens(data);
+        const runningTotal = total + sumMoralisTokenUsdValues(value);
+        return { value, summary: `${address} → ${formatUsd(runningTotal)}` };
+      },
+    );
 
-  const data = parseMobulaMarketData(await response.json());
-  return extractBtcPriceUsd(data);
+    total += sumMoralisTokenUsdValues(page);
+    cursor = page.cursor;
+  } while (cursor);
+
+  return total;
 };
 
 export const getWalletBalanceUsd = async (
   address: string,
-  apiKey: string,
+  { moralisApiKey, mobulaApiKey }: WalletApiKeys,
 ): Promise<number> => {
   if (isBtcAddress(address)) {
-    const utxos = await getBtcUtxos(address);
-    const satoshis = sumBtcUtxoSatoshis(utxos);
-    const btcUsdPrice = await getBtcUsdPrice(apiKey);
-    return convertSatoshisToUsd(satoshis, btcUsdPrice);
+    return getMoralisBtcBalanceUsd(address, moralisApiKey);
   }
 
-  return getMobulaWalletBalance(address, apiKey);
-};
-
-export const getBtcWalletBalanceUsd = async (
-  address: string,
-  btcUsdPrice: number,
-): Promise<number> => {
-  const utxos = await getBtcUtxos(address);
-  const satoshis = sumBtcUtxoSatoshis(utxos);
-  return convertSatoshisToUsd(satoshis, btcUsdPrice);
-};
-
-export const getWalletBalancesUsd = async (
-  addresses: string[],
-  apiKey: string,
-): Promise<Record<string, number>> => {
-  if (addresses.length === 0) {
-    return {};
+  if (isEthAddress(address)) {
+    return getMoralisEvmNetWorthUsd(address, moralisApiKey);
   }
 
-  return getMobulaWalletBalances(addresses, apiKey);
+  return getMobulaWalletBalance(address, mobulaApiKey);
 };

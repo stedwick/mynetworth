@@ -1,6 +1,6 @@
-const MAX_MOBULA_ERROR_BODY_LENGTH = 500;
+const MAX_ERROR_BODY_LENGTH = 500;
 
-export const formatMobulaRequestError = ({
+export const formatRequestError = ({
   body,
   requestName,
   status,
@@ -11,7 +11,7 @@ export const formatMobulaRequestError = ({
   status: number;
   statusText: string;
 }): string => {
-  const trimmedBody = body.trim().slice(0, MAX_MOBULA_ERROR_BODY_LENGTH);
+  const trimmedBody = body.trim().slice(0, MAX_ERROR_BODY_LENGTH);
   const statusLabel = statusText ? `${status} ${statusText}` : `${status}`;
 
   if (!trimmedBody) {
@@ -21,12 +21,12 @@ export const formatMobulaRequestError = ({
   return `${requestName} failed (${statusLabel}): ${trimmedBody}`;
 };
 
-export const throwMobulaRequestError = async (
+export const throwRequestError = async (
   response: Response,
   requestName: string,
 ): Promise<never> => {
   throw new Error(
-    formatMobulaRequestError({
+    formatRequestError({
       body: await response.text(),
       requestName,
       status: response.status,
