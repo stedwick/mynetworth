@@ -17,7 +17,11 @@ const moralisWalletTokensSchema = z.looseObject({
   cursor: z.string().nullable(),
   result: z.array(
     z.looseObject({
-      usdValue: z.number().nullable().optional(),
+      balanceRaw: z.string().regex(/^\d+$/),
+      chainId: z.string(),
+      decimals: z.number().int().nonnegative(),
+      nativeToken: z.boolean(),
+      symbol: z.string(),
     }),
   ),
 });
@@ -71,18 +75,39 @@ export const extractNetWorthUsd = (payload: MoralisNetWorth): number => {
   return netWorth;
 };
 
-export const sumMoralisTokenUsdValues = (
+export const extractMoralisBtcBalance = (
   payload: MoralisWalletTokens,
 ): number => {
-  let total = 0;
+  let balance = 0;
 
   for (const token of payload.result) {
-    if (typeof token.usdValue === "number" && Number.isFinite(token.usdValue)) {
-      total += token.usdValue;
-    }
+    if (
+      token.chainId !== "bitcoin-mainnet" ||
+      !token.nativeToken ||
+      token.symbol.toUpperCase() !== "BTC"
+    )
+      continue;
+
+    balance += Number(BigInt(token.balanceRaw)) / 10 ** token.decimals;
   }
 
-  return total;
+  return balance;
+};
+
+export const convertBtcToUsd = (
+  btcBalance: number,
+  btcUsdPrice: number,
+): number => {
+  if (
+    !Number.isFinite(btcBalance) ||
+    btcBalance < 0 ||
+    !Number.isFinite(btcUsdPrice) ||
+    btcUsdPrice <= 0
+  ) {
+    throw new Error("BTC value inputs invalid");
+  }
+
+  return btcBalance * btcUsdPrice;
 };
 
 export const parseAddressParam = (param: string | null): string | null => {

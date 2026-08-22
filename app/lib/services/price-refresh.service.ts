@@ -16,7 +16,7 @@ import {
   getWalletBalanceUsd,
   type WalletApiKeys,
 } from "@/app/api/crypto/wallet/service";
-import { isSolAddress } from "@/app/api/crypto/wallet/utils";
+import { isBtcAddress, isSolAddress } from "@/app/api/crypto/wallet/utils";
 import { getYahooQuotes } from "@/app/api/stocks/price/service";
 import { mapYahooQuotesToPrices } from "@/app/api/stocks/price/utils";
 
@@ -258,7 +258,10 @@ export const refreshAssetPricesForUser = async (
   await premarkAssetsByTargets(stockSymbols, cryptoSymbols, walletAddresses);
 
   const needsMobula =
-    cryptoSymbols.length > 0 || walletAddresses.some(isSolAddress);
+    cryptoSymbols.length > 0 ||
+    walletAddresses.some(
+      (address) => isBtcAddress(address) || isSolAddress(address),
+    );
   const needsMoralis = walletAddresses.some(
     (address) => !isSolAddress(address),
   );

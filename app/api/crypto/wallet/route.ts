@@ -1,6 +1,7 @@
 import {
   isBtcAddress,
   isEthAddress,
+  isSolAddress,
   isSupportedWalletAddress,
   mapWalletBalanceToResponse,
   parseAddressParam,
@@ -28,6 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const usesMoralis = isBtcAddress(addressParam) || isEthAddress(addressParam);
+  const usesMobula = isBtcAddress(addressParam) || isSolAddress(addressParam);
   const moralisApiKey = process.env.MORALIS_API_KEY;
   const mobulaApiKey = process.env.MOBULA_API_KEY;
 
@@ -43,7 +45,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  if (!usesMoralis && !mobulaApiKey) {
+  if (usesMobula && !mobulaApiKey) {
     return Response.json(
       { error: "Missing MOBULA_API_KEY" },
       {

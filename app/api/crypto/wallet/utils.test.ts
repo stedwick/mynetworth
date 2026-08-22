@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
+  convertBtcToUsd,
+  extractMoralisBtcBalance,
   extractNetWorthUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
@@ -11,7 +13,6 @@ import {
   parseMobulaWalletPortfolio,
   parseMoralisNetWorth,
   parseMoralisWalletTokens,
-  sumMoralisTokenUsdValues,
 } from "./utils";
 
 describe("parseAddressParam", () => {
@@ -153,7 +154,16 @@ describe("parseMoralisWalletTokens", () => {
   it("accepts a wallet tokens payload with a cursor", () => {
     const result = parseMoralisWalletTokens({
       cursor: "next-page",
-      result: [{ usdValue: 10896.44, symbol: "BTC" }],
+      result: [
+        {
+          balanceRaw: "133916752",
+          chainId: "bitcoin-mainnet",
+          decimals: 8,
+          nativeToken: true,
+          symbol: "BTC",
+          usdValue: 84411.75,
+        },
+      ],
     });
 
     expect(result.cursor).toBe("next-page");
@@ -167,20 +177,51 @@ describe("parseMoralisWalletTokens", () => {
   });
 });
 
-describe("sumMoralisTokenUsdValues", () => {
-  it("sums usd values and skips invalid entries", () => {
-    const total = sumMoralisTokenUsdValues({
+describe("extractMoralisBtcBalance", () => {
+  it("uses the raw native BTC balance and ignores provider USD values", () => {
+    const balance = extractMoralisBtcBalance({
       cursor: null,
       result: [
-        { usdValue: 100.5 },
-        { usdValue: 200.25 },
-        { usdValue: null },
-        { usdValue: Number.NaN },
-        {},
+        {
+          balanceRaw: "133916752",
+          chainId: "bitcoin-mainnet",
+          decimals: 8,
+          nativeToken: true,
+          symbol: "BTC",
+          usdValue: 84411.75,
+        },
+        {
+          balanceRaw: "100000000",
+          chainId: "bitcoin-mainnet",
+          decimals: 8,
+          nativeToken: false,
+          symbol: "OTHER",
+          usdValue: 999999,
+        },
       ],
     });
 
-    expect(total).toBe(300.75);
+    expect(balance).toBe(1.33916752);
+  });
+
+  it("returns zero when the wallet has no native BTC", () => {
+    expect(extractMoralisBtcBalance({ cursor: null, result: [] })).toBe(0);
+  });
+});
+
+describe("convertBtcToUsd", () => {
+  it("converts a BTC balance with an independent USD price", () => {
+    expect(convertBtcToUsd(1.33916752, 77204.78456156605)).toBeCloseTo(
+      103390.14,
+      2,
+    );
+  });
+
+  it("rejects invalid balances and prices", () => {
+    expect(() => convertBtcToUsd(-1, 77204.78)).toThrow(
+      "BTC value inputs invalid",
+    );
+    expect(() => convertBtcToUsd(1, 0)).toThrow("BTC value inputs invalid");
   });
 });
 

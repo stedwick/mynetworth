@@ -1,9 +1,13 @@
 import { cacheLife } from "next/cache";
 
+import { getMobulaAssets } from "@/app/api/crypto/price/service";
+import { mapMobulaAssetsToPrices } from "@/app/api/crypto/price/utils";
 import { logApiRequest } from "@/app/lib/fetch-log";
 import { formatUsd } from "@/app/lib/networth";
 
 import {
+  convertBtcToUsd,
+  extractMoralisBtcBalance,
   extractNetWorthUsd,
   extractWalletBalanceUsd,
   isBtcAddress,
@@ -11,7 +15,6 @@ import {
   parseMobulaWalletPortfolio,
   parseMoralisNetWorth,
   parseMoralisWalletTokens,
-  sumMoralisTokenUsdValues,
   type MoralisWalletTokens,
 } from "./utils";
 
@@ -91,7 +94,7 @@ const getMoralisEvmNetWorthUsd = async (
   );
 };
 
-const getMoralisBtcBalanceUsd = async (
+const getMoralisBtcBalance = async (
   address: string,
   apiKey: string,
 ): Promise<number> => {
@@ -118,12 +121,12 @@ const getMoralisBtcBalanceUsd = async (
       },
       (data) => {
         const value = parseMoralisWalletTokens(data);
-        const runningTotal = total + sumMoralisTokenUsdValues(value);
-        return { value, summary: `${address} → ${formatUsd(runningTotal)}` };
+        const runningTotal = total + extractMoralisBtcBalance(value);
+        return { value, summary: `${address} → ${runningTotal} BTC` };
       },
     );
 
-    total += sumMoralisTokenUsdValues(page);
+    total += extractMoralisBtcBalance(page);
     cursor = page.cursor;
   } while (cursor);
 
@@ -135,7 +138,21 @@ export const getWalletBalanceUsd = async (
   { moralisApiKey, mobulaApiKey }: WalletApiKeys,
 ): Promise<number> => {
   if (isBtcAddress(address)) {
-    return getMoralisBtcBalanceUsd(address, moralisApiKey);
+    const btcBalance = await getMoralisBtcBalance(address, moralisApiKey);
+    const btcPriceData = await getMobulaAssets(["BTC"], mobulaApiKey);
+    const btcUsdPrice = mapMobulaAssetsToPrices(
+      btcPriceData.dataArray ?? [],
+    ).BTC;
+
+    if (typeof btcUsdPrice !== "number") {
+      throw new Error("BTC price missing");
+    }
+
+    const value = convertBtcToUsd(btcBalance, btcUsdPrice);
+    console.info(
+      `[api] BTC wallet value: ${address} → ${btcBalance} BTC × ${formatUsd(btcUsdPrice)} (Mobula) = ${formatUsd(value)}`,
+    );
+    return value;
   }
 
   if (isEthAddress(address)) {
