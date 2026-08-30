@@ -76,7 +76,7 @@ const getMoralisEvmNetWorthUsd = async (
   const chainParams = MORALIS_EVM_CHAINS.map(
     (chain) => `chains=${encodeURIComponent(chain)}`,
   ).join("&");
-  const url = `${MORALIS_NET_WORTH_URL}/${encodeURIComponent(address)}/net-worth?${chainParams}&exclude_spam=true`;
+  const url = `${MORALIS_NET_WORTH_URL}/${encodeURIComponent(address)}/net-worth?${chainParams}&exclude_spam=true&exclude_unverified_contracts=true`;
 
   return logApiRequest(
     "Moralis net worth",
