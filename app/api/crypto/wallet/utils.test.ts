@@ -1,278 +1,215 @@
 import { describe, expect, it } from "bun:test";
 import {
-  extractBtcPriceUsd,
-  convertSatoshisToUsd,
-  extractWalletBalanceUsd,
+  ankrWalletBlockchains,
   isBtcAddress,
   isEthAddress,
   isSolAddress,
   isSupportedWalletAddress,
-  mapMobulaWalletBalancesToUsd,
   mapWalletBalanceToResponse,
-  parseBtcUtxos,
   parseAddressParam,
-  parseMobulaMarketData,
-  parseMobulaWalletPortfolio,
-  sumBtcUtxoSatoshis,
+  parseAnkrBtcBalanceUsd,
+  parseAnkrWalletBalanceUsd,
 } from "./utils";
 
-describe("parseAddressParam", () => {
-  it("trims the address and returns null for empty input", () => {
+const walletResult = (totalBalanceUsd: unknown = "12.34") => ({
+  totalBalanceUsd,
+  assets: [{ balanceUsd: totalBalanceUsd }],
+  syncStatus: {
+    status: "synced",
+    chains: ankrWalletBlockchains.map((blockchain) => ({
+      blockchain,
+      status: "synced",
+      lag: "0s",
+      timestamp: 1_788_000_000,
+    })),
+  },
+});
+
+describe("wallet address contracts", () => {
+  it("trims address parameters and rejects empty input", () => {
     expect(parseAddressParam(" 0xabc ")).toBe("0xabc");
     expect(parseAddressParam("   ")).toBeNull();
-  });
-});
-
-describe("isEthAddress", () => {
-  it("accepts valid ETH addresses", () => {
-    expect(isEthAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(
-      true,
-    );
+    expect(parseAddressParam(null)).toBeNull();
   });
 
-  it("rejects invalid ETH addresses", () => {
+  it("supports BTC and EVM while retaining legacy Solana detection", () => {
+    const eth = "0x396343362be2A4dA1cE0C1C210945346fb82Aa49";
+    const sol = "So11111111111111111111111111111111111111112";
+    expect(isEthAddress(eth)).toBe(true);
+    expect(isSupportedWalletAddress(eth)).toBe(true);
+    for (const btc of [
+      "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4",
+      "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+    ]) {
+      expect(isBtcAddress(btc)).toBe(true);
+      expect(isSupportedWalletAddress(btc)).toBe(true);
+    }
+    expect(isSolAddress(sol)).toBe(true);
+    expect(isSupportedWalletAddress(sol)).toBe(false);
+    expect(isSolAddress(eth)).toBe(false);
     expect(isEthAddress("0x123")).toBe(false);
-    expect(isEthAddress("396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(
-      false,
-    );
-  });
-});
-
-describe("isBtcAddress", () => {
-  it("accepts valid BTC addresses", () => {
-    expect(isBtcAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(true);
-    expect(isBtcAddress("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080")).toBe(
-      true,
-    );
-  });
-
-  it("rejects invalid BTC addresses", () => {
     expect(isBtcAddress("bc1")).toBe(false);
     expect(isBtcAddress("3O0O0O0O0O0O0O0O0O0O0O0O0O")).toBe(false);
-  });
-});
-
-describe("isSolAddress", () => {
-  it("accepts valid Solana addresses", () => {
-    expect(isSolAddress("So11111111111111111111111111111111111111112")).toBe(
-      true,
-    );
-  });
-
-  it("rejects invalid Solana addresses", () => {
     expect(isSolAddress("So111")).toBe(false);
-    expect(isSolAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49")).toBe(
-      false,
-    );
-  });
-});
-
-describe("isSupportedWalletAddress", () => {
-  it("accepts ETH, SOL, or BTC addresses", () => {
-    expect(
-      isSupportedWalletAddress("0x396343362be2A4dA1cE0C1C210945346fb82Aa49"),
-    ).toBe(true);
-    expect(
-      isSupportedWalletAddress("So11111111111111111111111111111111111111112"),
-    ).toBe(true);
-    expect(isSupportedWalletAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(
-      true,
-    );
-  });
-
-  it("rejects unknown address formats", () => {
     expect(isSupportedWalletAddress("not-an-address")).toBe(false);
   });
-});
 
-describe("parseBtcUtxos", () => {
-  it("accepts a list of BTC UTXOs", () => {
-    const result = parseBtcUtxos([
-      { txid: "abc", vout: 0, value: 1200, status: { confirmed: true } },
-    ]);
-
-    expect(result).toHaveLength(1);
-  });
-});
-
-describe("parseMobulaWalletPortfolio", () => {
-  it("accepts a wallet portfolio payload", () => {
-    const result = parseMobulaWalletPortfolio({
-      data: {
-        total_wallet_balance: 1234.56,
-        extra: "ok",
-      },
+  it("preserves address-keyed response values including zero", () => {
+    expect(mapWalletBalanceToResponse("0xabc", 99.5)).toEqual({
+      "0xabc": 99.5,
     });
-
-    expect(result.data.total_wallet_balance).toBe(1234.56);
+    expect(mapWalletBalanceToResponse("0xabc", 0)).toEqual({ "0xabc": 0 });
   });
 });
 
-describe("extractWalletBalanceUsd", () => {
-  it("prefers total_wallet_balance when available", () => {
-    const balance = extractWalletBalanceUsd({
-      data: {
-        total_wallet_balance: 12.34,
-      },
-    });
-
-    expect(balance).toBe(12.34);
+describe("parseAnkrWalletBalanceUsd", () => {
+  it("uses a finite provider total and accepts a verified empty wallet", () => {
+    expect(parseAnkrWalletBalanceUsd(walletResult())).toBe(12.34);
+    expect(parseAnkrWalletBalanceUsd(walletResult(42))).toBe(42);
+    expect(
+      parseAnkrWalletBalanceUsd({ ...walletResult("0"), assets: [] }),
+    ).toBe(0);
+    expect(ankrWalletBlockchains).toHaveLength(17);
+    for (const excluded of ["solana", "sonic", "monad"]) {
+      expect(ankrWalletBlockchains).not.toContain(excluded);
+    }
   });
 
-  it("falls back to balance_usd when total_wallet_balance is missing", () => {
-    const balance = extractWalletBalanceUsd({
-      data: {
-        balance_usd: 56.78,
-      },
-    });
-
-    expect(balance).toBe(56.78);
+  it.each([
+    undefined,
+    null,
+    "",
+    " ",
+    "12USD",
+    "0x10",
+    "Infinity",
+    Infinity,
+    NaN,
+    -1,
+    "-1",
+    true,
+    "1e309",
+  ])("rejects invalid or missing totals: %p", (value) => {
+    expect(() =>
+      parseAnkrWalletBalanceUsd({ ...walletResult(), totalBalanceUsd: value }),
+    ).toThrow();
   });
 
-  it("throws when no balance field is present", () => {
-    expect(() => extractWalletBalanceUsd({ data: {} })).toThrow();
+  it("fails explicitly on unexpected pagination rather than summing a partial page", () => {
+    expect(() =>
+      parseAnkrWalletBalanceUsd({
+        ...walletResult(),
+        nextPageToken: "opaque-cursor",
+      }),
+    ).toThrow("pagination");
+    expect(() =>
+      parseAnkrWalletBalanceUsd({ ...walletResult(), nextPageToken: 1 }),
+    ).toThrow("pagination");
+    expect(
+      parseAnkrWalletBalanceUsd({ ...walletResult(), nextPageToken: "" }),
+    ).toBe(12.34);
   });
-});
 
-describe("extractBtcPriceUsd", () => {
-  it("returns a positive finite BTC price", () => {
-    const price = extractBtcPriceUsd(
-      parseMobulaMarketData({
-        data: {
-          price: 70_571.64,
+  it("rejects missing, duplicate, or unsynced chain coverage", () => {
+    const result = walletResult();
+    expect(() =>
+      parseAnkrWalletBalanceUsd({ ...result, syncStatus: undefined }),
+    ).toThrow();
+    expect(() =>
+      parseAnkrWalletBalanceUsd({
+        ...result,
+        syncStatus: { ...result.syncStatus, status: "syncing" },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseAnkrWalletBalanceUsd({
+        ...result,
+        syncStatus: {
+          status: "synced",
+          chains: result.syncStatus.chains.slice(1),
         },
       }),
-    );
-
-    expect(price).toBe(70_571.64);
-  });
-
-  it("throws when the BTC price is missing", () => {
+    ).toThrow("coverage");
     expect(() =>
-      extractBtcPriceUsd(parseMobulaMarketData({ data: {} })),
-    ).toThrow("BTC price missing");
-  });
-
-  it("throws when the BTC price is zero", () => {
-    expect(() =>
-      extractBtcPriceUsd(
-        parseMobulaMarketData({
-          data: {
-            price: 0,
-          },
-        }),
-      ),
-    ).toThrow("BTC price missing");
-  });
-
-  it("throws when the BTC price is not finite", () => {
-    expect(() =>
-      extractBtcPriceUsd({
-        data: {
-          price: Number.POSITIVE_INFINITY,
+      parseAnkrWalletBalanceUsd({
+        ...result,
+        syncStatus: {
+          status: "synced",
+          chains: [...result.syncStatus.chains, result.syncStatus.chains[0]],
         },
       }),
-    ).toThrow("BTC price missing");
+    ).toThrow("coverage");
+    result.syncStatus.chains[0].status = "syncing";
+    expect(() => parseAnkrWalletBalanceUsd(result)).toThrow();
+  });
+
+  it("accepts live unpriced-token entries without treating the total as missing", () => {
+    expect(
+      parseAnkrWalletBalanceUsd({
+        ...walletResult(),
+        assets: [{ balanceUsd: "12.34" }, { balanceUsd: "" }, {}],
+      }),
+    ).toBe(12.34);
+  });
+
+  it("rejects missing, malformed, and contradictory asset balances", () => {
+    for (const assets of [undefined, [], [{ balanceUsd: "2garbage" }]]) {
+      expect(() =>
+        parseAnkrWalletBalanceUsd({ ...walletResult(), assets }),
+      ).toThrow();
+    }
+    expect(() =>
+      parseAnkrWalletBalanceUsd({
+        ...walletResult("0"),
+        assets: [{ balanceUsd: "1" }],
+      }),
+    ).toThrow("Inconsistent");
   });
 });
 
-describe("mapMobulaWalletBalancesToUsd", () => {
-  it("maps array or record payloads to address balances", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: [
-        {
-          wallet: "0xabc",
-          total_wallet_balance: 12.34,
-        },
-        {
-          address: "So11111111111111111111111111111111111111112",
-          balance_usd: 56.78,
-        },
-      ],
-    });
-
-    expect(result).toEqual({
-      "0xabc": 12.34,
-      So11111111111111111111111111111111111111112: 56.78,
-    });
-
-    const recordResult = mapMobulaWalletBalancesToUsd({
-      data: {
-        "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": { balance_usd: 90.12 },
-      },
-    });
-
-    expect(recordResult).toEqual({
-      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": 90.12,
-    });
+describe("parseAnkrBtcBalanceUsd", () => {
+  it("reads the USD valuation directly, not the satoshi amount", () => {
+    expect(
+      parseAnkrBtcBalanceUsd({ balance: "100000000", secondaryValue: 60000 }),
+    ).toBe(60000);
+    expect(
+      parseAnkrBtcBalanceUsd({
+        balance: "100000000",
+        secondaryValue: "60000.25",
+      }),
+    ).toBe(60000.25);
   });
 
-  it("maps wallet list payloads to address balances", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: {
-        wallets: [
-          {
-            wallet: "0xfeed",
-            total_wallet_balance: 44.55,
-          },
-        ],
-      },
-    });
-
-    expect(result).toEqual({ "0xfeed": 44.55 });
+  it("accepts omitted fiat only for verified zero confirmed and no nonzero unconfirmed balance", () => {
+    for (const balance of ["0", 0]) {
+      expect(parseAnkrBtcBalanceUsd({ balance })).toBe(0);
+      expect(parseAnkrBtcBalanceUsd({ balance, unconfirmedBalance: "0" })).toBe(
+        0,
+      );
+      expect(parseAnkrBtcBalanceUsd({ balance, secondaryValue: 0 })).toBe(0);
+    }
   });
 
-  it("maps wallet strings with balances record payloads", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: {
-        wallets: ["0xabc"],
-        balances: {
-          "0xabc": { balance_usd: 12.34 },
-        },
-        balances_length: 1,
-      },
-    });
-
-    expect(result).toEqual({ "0xabc": 12.34 });
-  });
-
-  it("maps a single wallet with total balance at the root", () => {
-    const result = mapMobulaWalletBalancesToUsd({
-      data: {
-        wallets: ["0x396343362be2A4dA1cE0C1C210945346fb82Aa49"],
-        total_wallet_balance: 99.99,
-      },
-    });
-
-    expect(result).toEqual({
-      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49": 99.99,
-    });
-  });
-});
-
-describe("sumBtcUtxoSatoshis", () => {
-  it("sums satoshi values and skips invalid entries", () => {
-    const result = sumBtcUtxoSatoshis([
-      { value: 1000 },
-      { value: 2500 },
-      { value: Number.NaN },
-      {},
-    ]);
-
-    expect(result).toBe(3500);
-  });
-});
-
-describe("convertSatoshisToUsd", () => {
-  it("converts satoshis to USD using the BTC price", () => {
-    expect(convertSatoshisToUsd(100_000_000, 50_000)).toBe(50_000);
-  });
-});
-
-describe("mapWalletBalanceToResponse", () => {
-  it("maps the balance to the address key", () => {
-    const result = mapWalletBalanceToResponse("0xabc", 99.5);
-
-    expect(result).toEqual({ "0xabc": 99.5 });
+  it.each([
+    {},
+    { secondaryValue: 1 },
+    { balance: "1" },
+    { balance: "1", secondaryValue: 0 },
+    { balance: "0", unconfirmedBalance: "1" },
+    { balance: "0", unconfirmedBalance: "-1", secondaryValue: 0 },
+    { balance: "0", unconfirmedBalance: "garbage" },
+    { balance: "0", unconfirmedBalance: null },
+    { balance: "0", secondaryValue: null },
+    { balance: "0", secondaryValue: "" },
+    { balance: "0", secondaryValue: Infinity },
+    { balance: "0", secondaryValue: -1 },
+    { balance: "0", secondaryValue: "12.34garbage" },
+    { balance: "0", error: "upstream failure" },
+    { balance: "1.2", secondaryValue: 1 },
+    { balance: "1sats", secondaryValue: 1 },
+    { balance: "-1", secondaryValue: 1 },
+    { balance: "9007199254740993", secondaryValue: 1 },
+  ])("rejects ambiguous or malformed balances: %p", (payload) => {
+    expect(() => parseAnkrBtcBalanceUsd(payload)).toThrow();
   });
 });

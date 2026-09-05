@@ -2,7 +2,10 @@ import "server-only";
 
 import { sql } from "@/app/lib/db";
 import { resolveCategoryId } from "@/app/lib/assets";
-import type { AssetFormRecord } from "@/app/lib/asset-form";
+import {
+  getWalletAddressError,
+  type AssetFormRecord,
+} from "@/app/lib/asset-form";
 import { getInitialPriceUpdatedAt } from "@/app/lib/asset-price-updated-at";
 
 export type CreateAssetInput = {
@@ -20,6 +23,8 @@ export async function createAssetForUser(
   userId: string,
   input: CreateAssetInput,
 ): Promise<void> {
+  const walletError = getWalletAddressError(input.kind, input.walletAddress);
+  if (walletError) throw new Error(walletError);
   const categoryId = await resolveCategoryId(userId, input.categoryInput);
   const priceUpdatedAt = getInitialPriceUpdatedAt(input.kind, new Date());
 
@@ -42,9 +47,9 @@ export async function createAssetForUser(
       ${input.name},
       ${input.kind},
       ${input.tickerSymbol},
-      ${input.quantity},
-      ${input.valueCents},
-      ${input.walletAddress},
+      ${input.kind === "wallet" ? 1 : input.quantity},
+      ${input.kind === "wallet" ? 0 : input.valueCents},
+      ${input.walletAddress?.trim() ?? null},
       ${priceUpdatedAt},
       ${input.sortOrder}
     )
@@ -73,9 +78,21 @@ export async function upsertAssetForUser(
   assetId: string,
   input: CreateAssetInput,
 ): Promise<void> {
+  const walletAddress = input.walletAddress?.trim() ?? null;
+  const walletError = getWalletAddressError(input.kind, walletAddress);
+  const existing = walletError ? await getAssetForUser(userId, assetId) : null;
+  const validationError = getWalletAddressError(
+    input.kind,
+    walletAddress,
+    existing ?? undefined,
+  );
+  if (validationError) throw new Error(validationError);
   const categoryId = await resolveCategoryId(userId, input.categoryInput);
+  const priceUpdatedAt = getInitialPriceUpdatedAt(input.kind, new Date());
+  const stalePriceUpdatedAt = getInitialPriceUpdatedAt("wallet", new Date());
 
-  await sql`
+  // Preserve live wallet values in SQL so a form opened before a refresh cannot overwrite them.
+  const rows = await sql`
     INSERT INTO assets (
       id,
       user_id,
@@ -86,19 +103,26 @@ export async function upsertAssetForUser(
       quantity,
       value_cents,
       wallet_address,
+      price_updated_at,
       sort_order
     )
-    VALUES (
+    SELECT
       ${assetId},
       ${userId},
       ${categoryId},
       ${input.name},
       ${input.kind},
       ${input.tickerSymbol},
-      ${input.quantity},
-      ${input.valueCents},
-      ${input.walletAddress},
+      ${input.kind === "wallet" ? 1 : input.quantity},
+      ${input.kind === "wallet" ? 0 : input.valueCents},
+      ${walletAddress},
+      ${priceUpdatedAt},
       ${input.sortOrder}
+    WHERE ${!walletError} OR EXISTS (
+      SELECT 1 FROM assets
+      WHERE id = ${assetId} AND user_id = ${userId}
+        AND kind = 'wallet' AND btrim(wallet_address) = ${walletAddress}
+      FOR UPDATE
     )
     ON CONFLICT (id)
     DO UPDATE SET
@@ -106,14 +130,42 @@ export async function upsertAssetForUser(
       name = EXCLUDED.name,
       kind = EXCLUDED.kind,
       ticker_symbol = EXCLUDED.ticker_symbol,
-      quantity = EXCLUDED.quantity,
-      value_cents = EXCLUDED.value_cents,
+      quantity = CASE
+        WHEN EXCLUDED.kind = 'wallet' AND ${!!walletError} THEN assets.quantity
+        ELSE EXCLUDED.quantity
+      END,
+      value_cents = CASE
+        WHEN EXCLUDED.kind = 'wallet' AND assets.kind = 'wallet'
+          AND btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address
+          THEN assets.value_cents
+        ELSE EXCLUDED.value_cents
+      END,
       wallet_address = EXCLUDED.wallet_address,
       sort_order = EXCLUDED.sort_order,
       updated_at = now(),
-      price_updated_at = now()
+      price_updated_at = CASE
+        WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind
+          THEN ${stalePriceUpdatedAt}
+        WHEN EXCLUDED.kind = 'wallet' THEN CASE
+          WHEN btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address
+            THEN assets.price_updated_at
+          ELSE ${stalePriceUpdatedAt}
+        END
+        WHEN EXCLUDED.kind = 'crypto'
+          AND assets.ticker_symbol = EXCLUDED.ticker_symbol
+          AND assets.value_cents = EXCLUDED.value_cents
+          THEN assets.price_updated_at
+        ELSE now()
+      END
     WHERE assets.user_id = ${userId}
+      AND (${!walletError} OR (
+        assets.kind = 'wallet' AND btrim(assets.wallet_address) = EXCLUDED.wallet_address
+      ))
+    RETURNING id
   `;
+  if (rows.length === 0) {
+    throw new Error(walletError ?? "Asset could not be updated.");
+  }
 }
 
 export async function deleteAssetForUser(

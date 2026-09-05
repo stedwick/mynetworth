@@ -1,53 +1,40 @@
-import { cacheLife } from "next/cache";
-import { throwMobulaRequestError } from "@/app/api/crypto/mobula-errors";
+import "server-only";
+
+import { getCryptoAsset } from "@/app/lib/crypto-assets";
 import {
-  mapMobulaAllAssetsToSymbols,
-  mobulaAllDataSchema,
-  parseMobulaMultiData,
-} from "./utils";
+  requestAnkrBtc,
+  requestAnkrRpc,
+} from "@/app/lib/services/ankr.service";
+import { parseAnkrBtcPriceUsd, parseAnkrTokenPriceUsd } from "./utils";
 
-const MOBULA_ALL_ASSETS_URL = "https://api.mobula.io/api/1/all";
-const MOBULA_MULTI_DATA_URL = "https://api.mobula.io/api/1/market/multi-data";
-
-export const getMobulaAssets = async (symbols: string[], apiKey: string) => {
-  "use cache";
-  cacheLife("hours");
-
-  const url = `${MOBULA_MULTI_DATA_URL}?symbols=${encodeURIComponent(symbols.join(","))}`;
-  console.info("[crypto/price] Fetching Mobula prices for:", symbols.join(","));
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
-    },
-    cache: "no-store",
+export const getCryptoPrices = async (
+  symbols: string[],
+  apiKey: string,
+): Promise<Record<string, number>> => {
+  const assets = [
+    ...new Set(symbols.map((symbol) => symbol.trim().toUpperCase())),
+  ].map((symbol) => {
+    const asset = getCryptoAsset(symbol);
+    if (!asset) throw new Error("Unsupported crypto symbol");
+    return asset;
   });
-
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula price request");
+  const prices: Record<string, number> = {};
+  // Keep provider concurrency bounded; there are only a few canonical identities.
+  for (const asset of assets) {
+    if (asset.blockchain === "btc") {
+      prices[asset.symbol] = parseAnkrBtcPriceUsd(
+        await requestAnkrBtc(apiKey, "tickers/?currency=usd"),
+      );
+    } else {
+      prices[asset.symbol] = parseAnkrTokenPriceUsd(
+        await requestAnkrRpc(apiKey, "ankr_getTokenPrice", {
+          blockchain: asset.blockchain,
+          ...(asset.contractAddress
+            ? { contractAddress: asset.contractAddress }
+            : {}),
+        }),
+      );
+    }
   }
-
-  return parseMobulaMultiData(await response.json());
-};
-
-export const getMobulaListedSymbols = async (apiKey: string) => {
-  "use cache";
-  cacheLife("days");
-
-  const url = `${MOBULA_ALL_ASSETS_URL}?fields=symbol,name,market_cap`;
-  console.info("[crypto/price] Fetching Mobula listed symbols");
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: apiKey,
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    await throwMobulaRequestError(response, "Mobula symbols request");
-  }
-
-  const data = mobulaAllDataSchema.parse(await response.json());
-  return mapMobulaAllAssetsToSymbols(data.data);
+  return prices;
 };

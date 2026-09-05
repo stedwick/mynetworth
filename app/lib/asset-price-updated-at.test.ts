@@ -15,4 +15,14 @@ describe("getInitialPriceUpdatedAt", () => {
 
     expect(result.toISOString()).toBe(reference.toISOString());
   });
+
+  it("does not let callers mutate the shared stale timestamp", () => {
+    const reference = new Date("2026-01-01");
+    const first = getInitialPriceUpdatedAt("wallet", reference);
+    first.setFullYear(2030);
+    expect(getInitialPriceUpdatedAt("wallet", reference).toISOString()).toBe(
+      "2025-01-01T00:00:00.000Z",
+    );
+    expect(reference.toISOString()).toBe("2026-01-01T00:00:00.000Z");
+  });
 });

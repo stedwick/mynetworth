@@ -1,197 +1,111 @@
 import { z } from "zod";
 
-const mobulaWalletBalanceSchema = z.looseObject({
-  total_wallet_balance: z.number().optional(),
-  balance_usd: z.number().optional(),
-});
+import { usdAmountSchema } from "../ankr-utils";
 
-const mobulaWalletPortfolioSchema = z.looseObject({
-  data: mobulaWalletBalanceSchema,
-});
+// TODO: Solana, Sonic, and Monad are intentionally excluded pending Ankr support.
+export const ankrWalletBlockchains = [
+  "arbitrum",
+  "avalanche",
+  "base",
+  "bsc",
+  "eth",
+  "fantom",
+  "flare",
+  "gnosis",
+  "linea",
+  "optimism",
+  "polygon",
+  "scroll",
+  "story_mainnet",
+  "taiko",
+  "telos",
+  "xai",
+  "xlayer",
+] as const;
 
-const mobulaWalletBalancesSchema = z.looseObject({
-  data: z.unknown(),
-});
-
-const mobulaMarketDataSchema = z.looseObject({
-  data: z.looseObject({
-    price: z.number().nullable().optional(),
+const ankrWalletSchema = z.object({
+  totalBalanceUsd: usdAmountSchema,
+  // Live responses include unpriced tokens with an empty balanceUsd, even with whitelisting.
+  assets: z.array(
+    z.object({
+      balanceUsd: z.union([usdAmountSchema, z.literal("")]).optional(),
+    }),
+  ),
+  nextPageToken: z.unknown().optional(),
+  syncStatus: z.object({
+    status: z.literal("synced"),
+    chains: z.array(
+      z.object({
+        blockchain: z.enum(ankrWalletBlockchains),
+        status: z.literal("synced"),
+      }),
+    ),
   }),
 });
 
-export type MobulaWalletPortfolio = z.infer<typeof mobulaWalletPortfolioSchema>;
-export type MobulaWalletBalances = z.infer<typeof mobulaWalletBalancesSchema>;
-export type MobulaMarketData = z.infer<typeof mobulaMarketDataSchema>;
-
-export const parseMobulaWalletPortfolio = (
-  data: unknown,
-): MobulaWalletPortfolio => {
-  return mobulaWalletPortfolioSchema.parse(data);
-};
-
-export const parseMobulaWalletBalances = (
-  data: unknown,
-): MobulaWalletBalances => {
-  return mobulaWalletBalancesSchema.parse(data);
-};
-
-export const parseMobulaMarketData = (data: unknown): MobulaMarketData => {
-  return mobulaMarketDataSchema.parse(data);
-};
-
-const extractWalletBalanceValue = (data: {
-  total_wallet_balance?: number;
-  balance_usd?: number;
-}): number => {
-  const balance = data.total_wallet_balance ?? data.balance_usd;
-
-  if (typeof balance !== "number" || !Number.isFinite(balance)) {
-    throw new Error("Wallet balance missing");
+export const parseAnkrWalletBalanceUsd = (payload: unknown): number => {
+  const parsed = ankrWalletSchema.safeParse(payload);
+  if (!parsed.success)
+    throw new Error("Invalid or unsynced Ankr wallet balance");
+  const { totalBalanceUsd, assets, nextPageToken, syncStatus } = parsed.data;
+  if (
+    nextPageToken !== undefined &&
+    nextPageToken !== null &&
+    nextPageToken !== ""
+  ) {
+    throw new Error(
+      "Unexpected Ankr wallet pagination; full balance not verified",
+    );
   }
-
-  return balance;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-
-export const extractWalletBalanceUsd = (
-  payload: MobulaWalletPortfolio,
-): number => {
-  return extractWalletBalanceValue(payload.data);
-};
-
-export const extractBtcPriceUsd = (payload: MobulaMarketData): number => {
-  const price = payload.data.price;
-
-  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
-    throw new Error("BTC price missing");
+  const chains = new Set(syncStatus.chains.map((chain) => chain.blockchain));
+  if (
+    chains.size !== ankrWalletBlockchains.length ||
+    syncStatus.chains.length !== chains.size
+  ) {
+    throw new Error("Incomplete Ankr wallet chain coverage");
   }
-
-  return price;
+  if (
+    (totalBalanceUsd > 0 && assets.length === 0) ||
+    (totalBalanceUsd === 0 &&
+      assets.some(
+        (asset) => typeof asset.balanceUsd === "number" && asset.balanceUsd > 0,
+      ))
+  ) {
+    throw new Error("Inconsistent Ankr wallet balance");
+  }
+  return totalBalanceUsd;
 };
 
-export const mapMobulaWalletBalancesToUsd = (
-  payload: MobulaWalletBalances,
-): Record<string, number> => {
-  const balances: Record<string, number> = {};
-  const data = payload.data;
+const satoshiSchema = z
+  .union([z.string().regex(/^-?\d+$/), z.number()])
+  .transform(Number)
+  .pipe(z.number().int());
+const btcWalletSchema = z.object({
+  balance: satoshiSchema.pipe(z.number().nonnegative()),
+  unconfirmedBalance: satoshiSchema.optional(),
+  secondaryValue: usdAmountSchema.optional(),
+  error: z.unknown().optional(),
+});
 
-  if (Array.isArray(data)) {
-    for (const entry of data) {
-      if (!isRecord(entry)) continue;
-      const wallet =
-        typeof entry.wallet === "string"
-          ? entry.wallet
-          : typeof entry.address === "string"
-            ? entry.address
-            : "";
-      const address = wallet.trim();
-      if (!address) continue;
-      balances[address] = extractWalletBalanceValue(entry);
-    }
-
-    return balances;
+export const parseAnkrBtcBalanceUsd = (payload: unknown): number => {
+  const parsed = btcWalletSchema.safeParse(payload);
+  if (!parsed.success || parsed.data.error !== undefined) {
+    throw new Error("Invalid Ankr BTC balance");
   }
-
-  if (isRecord(data)) {
-    const singleWallet =
-      typeof data.wallet === "string"
-        ? data.wallet
-        : typeof data.address === "string"
-          ? data.address
-          : null;
-
-    if (singleWallet) {
-      const trimmed = singleWallet.trim();
-      if (trimmed) {
-        try {
-          balances[trimmed] = extractWalletBalanceValue(data);
-          return balances;
-        } catch {
-          // Fall through to other parsing strategies.
-        }
-      }
-    }
-
-    const balancesRecord = isRecord(data.balances) ? data.balances : null;
-    if (balancesRecord) {
-      for (const [address, entry] of Object.entries(balancesRecord)) {
-        const trimmed = address.trim();
-        if (!trimmed) continue;
-        if (typeof entry === "number" && Number.isFinite(entry)) {
-          balances[trimmed] = entry;
-          continue;
-        }
-        if (isRecord(entry)) {
-          balances[trimmed] = extractWalletBalanceValue(entry);
-        }
-      }
-    }
-
-    const entries = Array.isArray(data.wallets)
-      ? data.wallets
-      : Array.isArray(data.assets)
-        ? data.assets
-        : null;
-
-    if (entries) {
-      if (
-        entries.length === 1 &&
-        typeof entries[0] === "string" &&
-        (typeof data.total_wallet_balance === "number" ||
-          typeof data.balance_usd === "number")
-      ) {
-        const trimmed = entries[0].trim();
-        if (trimmed) {
-          balances[trimmed] = extractWalletBalanceValue(data);
-          return balances;
-        }
-      }
-
-      for (const entry of entries) {
-        if (typeof entry === "string") {
-          const trimmed = entry.trim();
-          if (!trimmed) continue;
-          if (balancesRecord && trimmed in balancesRecord) {
-            continue;
-          }
-        } else if (isRecord(entry)) {
-          const wallet =
-            typeof entry.wallet === "string"
-              ? entry.wallet
-              : typeof entry.address === "string"
-                ? entry.address
-                : "";
-          const address = wallet.trim();
-          if (!address) continue;
-          balances[address] = extractWalletBalanceValue(entry);
-        }
-      }
-    }
-
-    for (const [address, entry] of Object.entries(data)) {
-      if (!isSupportedWalletAddress(address)) continue;
-      if (address in balances) continue;
-      if (typeof entry === "number" && Number.isFinite(entry)) {
-        balances[address] = entry;
-        continue;
-      }
-      if (isRecord(entry)) {
-        balances[address] = extractWalletBalanceValue(entry);
-      }
-    }
-
-    return balances;
+  const { balance, unconfirmedBalance, secondaryValue } = parsed.data;
+  if (secondaryValue !== undefined && secondaryValue > 0) return secondaryValue;
+  // Blockbook omits zero-valued fields. Missing fiat is zero only with proof.
+  if (
+    balance === 0 &&
+    (unconfirmedBalance === undefined || unconfirmedBalance === 0)
+  ) {
+    return 0;
   }
-
-  return balances;
+  throw new Error("Missing or zero Ankr BTC valuation for a nonzero balance");
 };
 
 export const parseAddressParam = (param: string | null): string | null => {
   if (!param) return null;
-
   const trimmed = param.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
@@ -202,67 +116,21 @@ const btcAddressSchema = z
   .regex(/^(1|3)[A-HJ-NP-Za-km-z1-9]{25,39}$/)
   .or(z.string().regex(/^bc1[ac-hj-np-z02-9]{11,71}$/i));
 const solAddressSchema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
-const supportedWalletAddressSchema = z.union([
-  ethAddressSchema,
-  solAddressSchema,
-  btcAddressSchema,
-]);
 
-const btcUtxoSchema = z.looseObject({
-  value: z.number().optional(),
-  status: z
-    .looseObject({
-      confirmed: z.boolean().optional(),
-    })
-    .optional(),
-});
+export const isEthAddress = (address: string): boolean =>
+  ethAddressSchema.safeParse(address).success;
 
-const btcUtxoArraySchema = z.array(btcUtxoSchema);
+export const isBtcAddress = (address: string): boolean =>
+  btcAddressSchema.safeParse(address).success;
 
-export const isEthAddress = (address: string): boolean => {
-  return ethAddressSchema.safeParse(address).success;
-};
+// Retained for identifying legacy assets in the UI, not for provider requests.
+export const isSolAddress = (address: string): boolean =>
+  solAddressSchema.safeParse(address).success;
 
-export const isBtcAddress = (address: string): boolean => {
-  return btcAddressSchema.safeParse(address).success;
-};
-
-export const isSolAddress = (address: string): boolean => {
-  return solAddressSchema.safeParse(address).success;
-};
-
-export const isSupportedWalletAddress = (address: string): boolean => {
-  return supportedWalletAddressSchema.safeParse(address).success;
-};
-
-export type BtcUtxo = z.infer<typeof btcUtxoSchema>;
-
-export const parseBtcUtxos = (data: unknown): BtcUtxo[] => {
-  return btcUtxoArraySchema.parse(data);
-};
-
-export const sumBtcUtxoSatoshis = (utxos: BtcUtxo[]): number => {
-  let total = 0;
-
-  for (const utxo of utxos) {
-    if (typeof utxo.value === "number" && Number.isFinite(utxo.value)) {
-      total += utxo.value;
-    }
-  }
-
-  return total;
-};
-
-export const convertSatoshisToUsd = (
-  satoshis: number,
-  btcUsdPrice: number,
-): number => {
-  return (satoshis / 1e8) * btcUsdPrice;
-};
+export const isSupportedWalletAddress = (address: string): boolean =>
+  isBtcAddress(address) || isEthAddress(address);
 
 export const mapWalletBalanceToResponse = (
   address: string,
   totalBalanceUsd: number,
-): Record<string, number> => {
-  return { [address]: totalBalanceUsd };
-};
+): Record<string, number> => ({ [address]: totalBalanceUsd });

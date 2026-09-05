@@ -6,20 +6,6 @@ import {
 import { getWalletBalanceUsd } from "./service";
 
 export async function GET(request: Request): Promise<Response> {
-  const apiKey = process.env.MOBULA_API_KEY;
-
-  if (!apiKey) {
-    return Response.json(
-      { error: "Missing MOBULA_API_KEY" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      },
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const addressParam = parseAddressParam(searchParams.get("address"));
 
@@ -33,9 +19,17 @@ export async function GET(request: Request): Promise<Response> {
   if (!isSupportedWalletAddress(addressParam)) {
     return Response.json(
       {
-        error: "Provide a valid EVM, SOL, or BTC address via ?address=...",
+        error: "Provide a valid EVM or BTC address via ?address=...",
       },
       { status: 400 },
+    );
+  }
+
+  const apiKey = process.env.ANKR_API_KEY;
+  if (!apiKey?.trim()) {
+    return Response.json(
+      { error: "Missing ANKR_API_KEY" },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
     );
   }
 
@@ -54,7 +48,7 @@ export async function GET(request: Request): Promise<Response> {
     });
   } catch {
     return Response.json(
-      { error: "Mobula request failed" },
+      { error: "Ankr request failed" },
       {
         status: 502,
         headers: {

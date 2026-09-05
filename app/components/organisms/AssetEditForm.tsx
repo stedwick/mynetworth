@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEventHandler } from "react";
+import { type FormEventHandler, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Combobox } from "@base-ui/react/combobox";
@@ -12,10 +12,15 @@ import {
   Controller,
   type Control,
   type UseFormSetValue,
+  useFormState,
   useWatch,
 } from "react-hook-form";
 
-import type { AssetEditFormValues } from "@/app/lib/asset-form";
+import {
+  getPriceForIdentityChange,
+  getWalletAddressError,
+  type AssetEditFormValues,
+} from "@/app/lib/asset-form";
 import { AutocompleteInput } from "@/app/components/molecules/AutocompleteInput";
 import { useAutocompleteSearch } from "@/app/lib/asset-autocomplete";
 import { usePriceLookup } from "@/app/lib/asset-price";
@@ -75,7 +80,11 @@ export default function AssetEditForm({
     label: name,
   }));
   const selectedKind = useWatch({ control, name: "kind" });
+  const walletAddress = useWatch({ control, name: "walletAddress" });
+  const { defaultValues } = useFormState({ control });
+  const [walletError, setWalletError] = useState<string | null>(null);
   const tickerValue = useWatch({ control, name: "ticker" }) ?? "";
+  const identity = useRef({ kind: selectedKind, ticker: tickerValue });
   const nameValue = useWatch({ control, name: "name" }) ?? "";
   const isManualKind = selectedKind === "manual";
   const isWalletKind = selectedKind === "wallet";
@@ -95,7 +104,12 @@ export default function AssetEditForm({
     endpoint: searchEndpoint,
     query: nameValue,
   });
-  const { lookupPrice, loading: priceLoading } = usePriceLookup({
+  const {
+    lookupPrice,
+    cancelLookup,
+    loading: priceLoading,
+    error: priceError,
+  } = usePriceLookup({
     kind: selectedKind,
     onPriceResolved: (price) => {
       setValue("price", String(price), selectionOptions);
@@ -124,12 +138,39 @@ export default function AssetEditForm({
     shouldValidate: true,
   } as const;
 
+  const handleIdentityChange = (
+    kind: AssetEditFormValues["kind"],
+    ticker: string,
+  ) => {
+    // Autocomplete can report the same selection twice before React rerenders.
+    if (identity.current.kind === kind && identity.current.ticker === ticker) {
+      return;
+    }
+    cancelLookup();
+    const price = getPriceForIdentityChange(identity.current, { kind, ticker });
+    identity.current = { kind, ticker };
+    if (price !== null) setValue("price", price, selectionOptions);
+  };
+
   const isSubmitting = submitting || priceLoading;
 
   return (
     <form
       onSubmit={(event) => {
         if (priceLoading) {
+          event.preventDefault();
+          return;
+        }
+        const addressError = getWalletAddressError(
+          selectedKind,
+          walletAddress,
+          {
+            kind: defaultValues?.kind ?? "",
+            wallet_address: defaultValues?.walletAddress ?? null,
+          },
+        );
+        setWalletError(addressError);
+        if (addressError) {
           event.preventDefault();
           return;
         }
@@ -159,7 +200,14 @@ export default function AssetEditForm({
               </Field.Label>
               <RadioGroup
                 value={field.value}
-                onValueChange={field.onChange}
+                onValueChange={(value) => {
+                  handleIdentityChange(
+                    value as AssetEditFormValues["kind"],
+                    tickerValue,
+                  );
+                  setWalletError(null);
+                  field.onChange(value);
+                }}
                 className="grid gap-2 sm:grid-cols-2"
               >
                 {kindOptions.map((option) => (
@@ -176,8 +224,8 @@ export default function AssetEditForm({
               </RadioGroup>
               <p className="text-xs text-slate-500 dark:text-white/50">
                 Examples: Stock (AAPL, TSLA) · Crypto (BTC, ETH) · Crypto Wallet
-                (Bitcoin, Ethereum & EMV, Solana addresses) · Manual (Mortgage,
-                Auto Loan)
+                (Bitcoin, Ethereum & EVM addresses) · Manual (Mortgage, Auto
+                Loan)
               </p>
               <Field.Error
                 match={
@@ -219,7 +267,10 @@ export default function AssetEditForm({
                       placeholder="e.g. bc1q..."
                       required={isWalletKind}
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        setWalletError(null);
+                        field.onChange(value);
+                      }}
                       onBlur={field.onBlur}
                     />
                     <Field.Error
@@ -231,6 +282,11 @@ export default function AssetEditForm({
                     >
                       {fieldState.error?.message}
                     </Field.Error>
+                    {walletError ? (
+                      <p role="alert" className={fieldErrorClassName}>
+                        {walletError}
+                      </p>
+                    ) : null}
                   </Field.Root>
                 )}
               />
@@ -263,7 +319,10 @@ export default function AssetEditForm({
                       <AutocompleteInput
                         items={tickerMatches}
                         value={field.value ?? ""}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          handleIdentityChange(selectedKind, value);
+                          field.onChange(value);
+                        }}
                         onBlur={handleTickerBlur}
                         inputRef={field.ref}
                         placeholder={`e.g. ${symbolPlaceholder}`}
@@ -272,6 +331,7 @@ export default function AssetEditForm({
                         query={tickerValue}
                         itemToStringValue={(item) => item.symbol}
                         onSelect={(item) => {
+                          handleIdentityChange(selectedKind, item.symbol);
                           setValue("ticker", item.symbol, selectionOptions);
                           setValue(
                             "name",
@@ -288,7 +348,10 @@ export default function AssetEditForm({
                         placeholder={`e.g. ${symbolPlaceholder}`}
                         required
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          handleIdentityChange(selectedKind, value);
+                          field.onChange(value);
+                        }}
                         onBlur={handleTickerBlur}
                       />
                     )}
@@ -339,6 +402,7 @@ export default function AssetEditForm({
                       query={nameValue}
                       itemToStringValue={(item) => item.name ?? item.symbol}
                       onSelect={(item) => {
+                        handleIdentityChange(selectedKind, item.symbol);
                         setValue("ticker", item.symbol, selectionOptions);
                         setValue(
                           "name",
@@ -418,7 +482,7 @@ export default function AssetEditForm({
                   name="price"
                   control={control}
                   rules={
-                    isManualKind
+                    isManualKind || selectedKind === "crypto"
                       ? { required: "Price is required." }
                       : undefined
                   }
@@ -437,15 +501,31 @@ export default function AssetEditForm({
                         ref={field.ref}
                         className={fieldControlClassName}
                         placeholder="e.g. 185.32"
-                        required={isManualKind}
+                        required={isManualKind || selectedKind === "crypto"}
                         type="number"
                         inputMode="decimal"
                         step="any"
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          cancelLookup();
+                          field.onChange(value);
+                        }}
                         onBlur={field.onBlur}
-                        disabled={!isManualKind}
+                        disabled={!isManualKind && selectedKind !== "crypto"}
                       />
+                      {selectedKind === "crypto" ? (
+                        <p className="text-xs text-slate-500 dark:text-white/50">
+                          Select a symbol to fetch a quote, or enter a price
+                          manually.
+                        </p>
+                      ) : null}
+                      {selectedKind === "crypto" &&
+                      priceError?.symbol ===
+                        tickerValue.trim().toUpperCase() ? (
+                        <p role="alert" className={fieldErrorClassName}>
+                          {priceError.message}
+                        </p>
+                      ) : null}
                       {isManualKind ? (
                         <p className="text-xs text-slate-500 dark:text-white/50">
                           Negative prices can represent debt.

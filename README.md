@@ -40,6 +40,22 @@ Set these in `.env` or `.env.local`:
 
 - `DATABASE_URL` (Neon Postgres connection string)
 - `NEON_AUTH_BASE_URL` (Neon Auth base URL from Neon Console → Project → Branch → Auth → Configuration)
+- `ANKR_API_KEY` (server-only Ankr Premium/PAYG key for crypto wallets and prices)
+- `PRICE_REFRESH_SECONDS` (optional; defaults to `3600`; `0` disables the DB freshness gate for testing)
+
+## Crypto Data
+
+- Ankr replaces Mobula and BTCScan. No Moralis or Mobula key is required.
+- Bitcoin wallets use Blockbook address balances with `details=basic&secondary=usd`.
+- EVM wallets aggregate 17 mainnets: Ethereum, Arbitrum, Avalanche, Base, BNB Chain, Fantom, Flare, Gnosis, Linea, Optimism, Polygon, Scroll, Story, Taiko, Telos, Xai, and X Layer. Only Ankr-whitelisted tokens are included; this is not comprehensive DeFi/NFT net worth.
+- Solana wallets are temporarily skipped without errors, retaining their last value and refresh timestamp. Sonic and Monad are excluded from EVM totals; totals may decrease compared with the previous provider.
+- Standalone crypto prices/autocomplete currently support BTC, ETH, BNB, AVAX, POL, USDC, USDT, DAI, LINK, UNI, AAVE, ARB, OP, and WBTC. Identities are explicit in `app/lib/crypto-assets.ts`, never inferred from an arbitrary matching symbol. Unsupported existing symbols are skipped; prices can be entered manually.
+- Refresh is on demand when entering `/me` or clicking Refresh, not a background hourly job. Eligible crypto values are fetched without a second service-cache layer. Up to four wallet requests run concurrently. Successful values and timestamps update together; failures preserve old values and are reported. Stocks still use Yahoo.
+- A Bitcoin address is not an entire HD wallet account. XPUB tracking is not implemented.
+
+### Testing The Migration
+
+Set `ANKR_API_KEY` in the environment used by your Next.js process, then run `bun dev`. Test BTC/EVM wallet creation, crypto autocomplete/price lookup, and Refresh on `/me`. Use `PRICE_REFRESH_SECONDS=0` temporarily to refresh existing fresh rows immediately, then restore `3600`. Existing Solana wallets and unsupported symbols should remain unchanged. No database migration is needed.
 
 ## Auth + Example Routes
 

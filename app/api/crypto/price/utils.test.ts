@@ -1,95 +1,55 @@
 import { describe, expect, it } from "bun:test";
 import {
-  mapMobulaAllAssetsToSymbols,
-  mapMobulaAssetsToPrices,
-  mobulaAllDataSchema,
-  parseMobulaMultiData,
+  parseAnkrBtcPriceUsd,
+  parseAnkrTokenPriceUsd,
   parseSymbolsParam,
 } from "./utils";
 
 describe("parseSymbolsParam", () => {
   it("normalizes, trims, and de-duplicates symbols", () => {
-    const result = parseSymbolsParam(" btc, ETH , ,btc ");
-
-    expect(result).toEqual(["BTC", "ETH"]);
+    expect(parseSymbolsParam(" btc, ETH , ,btc ")).toEqual(["BTC", "ETH"]);
+    expect(parseSymbolsParam(null)).toEqual([]);
+    expect(parseSymbolsParam(" , ")).toEqual([]);
   });
 });
 
-describe("parseMobulaMultiData", () => {
-  it("accepts a dataArray payload", () => {
-    const result = parseMobulaMultiData({
-      dataArray: [{ symbol: "BTC", price: 50000, extra: true }, null],
-    });
-
-    expect(result.dataArray?.[0]).toEqual({
-      symbol: "BTC",
-      price: 50000,
-      extra: true,
-    });
-  });
-});
-
-describe("mobulaAllDataSchema", () => {
-  it("accepts a data payload", () => {
-    const result = mobulaAllDataSchema.parse({
-      data: [
-        {
-          symbol: "BTC",
-          name: "Bitcoin",
-          market_cap: 1000,
-          extra: true,
-        },
-      ],
-    });
-
-    expect(result.data[0]).toEqual({
-      symbol: "BTC",
-      name: "Bitcoin",
-      market_cap: 1000,
-      extra: true,
-    });
-  });
-});
-
-describe("mapMobulaAssetsToPrices", () => {
-  it("maps asset prices and skips missing values", () => {
-    const result = mapMobulaAssetsToPrices([
-      { symbol: "BTC", price: 50000 },
-      { symbol: "ETH", price: null },
-      null,
-      { symbol: "SOL" },
-      { symbol: "ada", price: 2.5 },
-    ]);
-
-    expect(result).toEqual({ BTC: 50000, ADA: 2.5 });
-  });
-});
-
-describe("mapMobulaAllAssetsToSymbols", () => {
-  it("normalizes symbols and skips empty values", () => {
-    const result = mapMobulaAllAssetsToSymbols([
-      { symbol: " btc ", name: "Bitcoin", market_cap: 1000 },
-      { symbol: "ETH", name: "Ethereum", market_cap: null },
-      { symbol: "btc", name: "Bitcoin Duplicate" },
-      null,
-      { symbol: "" },
-    ]);
-
-    expect(result).toEqual([
-      { symbol: "BTC", name: "Bitcoin", marketCap: 1000 },
-      { symbol: "ETH", name: "Ethereum", marketCap: undefined },
-    ]);
+describe("Ankr prices", () => {
+  it("parses positive token and BTC prices", () => {
+    expect(parseAnkrTokenPriceUsd({ usdPrice: "1234.56" })).toBe(1234.56);
+    expect(parseAnkrTokenPriceUsd({ usdPrice: 1 })).toBe(1);
+    expect(
+      parseAnkrBtcPriceUsd({ ts: 1_788_000_000, rates: { usd: 60000 } }),
+    ).toBe(60000);
   });
 
-  it("keeps the highest market cap when symbols collide", () => {
-    const result = mapMobulaAllAssetsToSymbols([
-      { symbol: "btc", name: "Smaller BTC", market_cap: 50 },
-      { symbol: "BTC", name: "Bitcoin", market_cap: 1000 },
-      { symbol: "BTC", name: "No Cap" },
-    ]);
+  it.each([
+    undefined,
+    null,
+    0,
+    "0",
+    -1,
+    NaN,
+    Infinity,
+    "",
+    " ",
+    "1USD",
+    "0x10",
+    "1e309",
+    true,
+  ])("rejects missing or invalid prices without a $1 fallback: %p", (value) => {
+    expect(() => parseAnkrTokenPriceUsd({ usdPrice: value })).toThrow();
+    expect(() =>
+      parseAnkrBtcPriceUsd({ ts: 1_788_000_000, rates: { usd: value } }),
+    ).toThrow();
+  });
 
-    expect(result).toEqual([
-      { symbol: "BTC", name: "Bitcoin", marketCap: 1000 },
-    ]);
+  it("rejects malformed ticker envelopes and Blockbook error payloads", () => {
+    for (const payload of [
+      { rates: { usd: 1 } },
+      { ts: 1, rates: {} },
+      { ts: 1, rates: { usd: 1 }, error: "bad" },
+    ]) {
+      expect(() => parseAnkrBtcPriceUsd(payload)).toThrow();
+    }
   });
 });

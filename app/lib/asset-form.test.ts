@@ -2,6 +2,10 @@ import { describe, expect, it } from "bun:test";
 
 import {
   assetFormValuesFromRecord,
+  assetFormSchema,
+  assetEditDefaultValues,
+  getWalletAddressError,
+  getPriceForIdentityChange,
   normalizeAssetFormValues,
   type AssetFormRecord,
 } from "./asset-form";
@@ -14,7 +18,7 @@ describe("normalizeAssetFormValues", () => {
       ticker: " aapl ",
       category: " Retirement ",
       order: "2",
-      kind: "wallet",
+      kind: "stock",
       price: "185.12",
       quantity: "3.5",
     });
@@ -42,6 +46,175 @@ describe("normalizeAssetFormValues", () => {
 
     expect(result.walletAddress).toBeNull();
     expect(result.valueCents).toBe(-120000);
+  });
+
+  it("normalizes supported wallet quantities without changing address casing", () => {
+    for (const walletAddress of [
+      "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4",
+      "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+      "0x396343362be2A4dA1cE0C1C210945346fb82Aa49",
+    ]) {
+      const result = normalizeAssetFormValues({
+        ...assetEditDefaultValues,
+        kind: "wallet",
+        name: "Wallet",
+        ticker: "WALLET",
+        category: "Crypto",
+        walletAddress: ` ${walletAddress} `,
+        quantity: "12.5",
+      });
+      expect(result.quantity).toBe(1);
+      expect(result.walletAddress).toBe(walletAddress);
+    }
+  });
+
+  it("preserves legacy Solana quantity and value for unrelated edits", () => {
+    const result = normalizeAssetFormValues({
+      ...assetEditDefaultValues,
+      kind: "wallet",
+      name: "Renamed wallet",
+      ticker: "SOL",
+      category: "Crypto",
+      walletAddress: "So11111111111111111111111111111111111111112",
+      quantity: "3.5",
+      price: "123.45",
+    });
+    expect(result.quantity).toBe(3.5);
+    expect(result.valueCents).toBe(12345);
+  });
+
+  it("rejects malformed wallet addresses in the shared schema", () => {
+    const result = assetFormSchema.safeParse({
+      ...assetEditDefaultValues,
+      kind: "wallet",
+      name: "Wallet",
+      ticker: "WALLET",
+      category: "Crypto",
+      walletAddress: "0xabc",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("getPriceForIdentityChange", () => {
+  it("clears the default price on entering crypto and requires a quote or manual price", () => {
+    for (const ticker of ["ETH", "SOL"]) {
+      const next = { kind: "crypto" as const, ticker };
+      const price = getPriceForIdentityChange(assetEditDefaultValues, next);
+      expect(price).toBe("");
+      const values = {
+        ...assetEditDefaultValues,
+        ...next,
+        name: "Crypto",
+        category: "Crypto",
+        price,
+      };
+      expect(assetFormSchema.safeParse(values).success).toBe(false);
+      expect(assetFormSchema.safeParse({ ...values, price: " " }).success).toBe(
+        false,
+      );
+      expect(
+        assetFormSchema.safeParse({ ...values, price: "123.45" }).success,
+      ).toBe(true);
+      expect(assetFormSchema.safeParse({ ...values, price: "1" }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it("clears a previous token price on typed or selected identity changes", () => {
+    const current = { kind: "crypto" as const, ticker: "ETH" };
+    for (const ticker of ["SOL", "BTC", "E", ""]) {
+      expect(getPriceForIdentityChange(current, { ...current, ticker })).toBe(
+        "",
+      );
+    }
+  });
+
+  it("preserves loaded crypto prices and same-symbol selections", () => {
+    for (const ticker of ["ETH", "SOL"]) {
+      const current = { kind: "crypto" as const, ticker };
+      expect(getPriceForIdentityChange(current, current)).toBeNull();
+      expect(
+        getPriceForIdentityChange(current, {
+          ...current,
+          ticker: ` ${ticker.toLowerCase()} `,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  it("gives newly selected wallets a valid hidden zero price", () => {
+    const next = { kind: "wallet" as const, ticker: "WALLET" };
+    const price = getPriceForIdentityChange(
+      { kind: "crypto", ticker: "ETH" },
+      next,
+    );
+    expect(price).toBe("0");
+    expect(
+      assetFormSchema.safeParse({
+        ...assetEditDefaultValues,
+        ...next,
+        name: "Wallet",
+        category: "Crypto",
+        walletAddress: "0x396343362be2A4dA1cE0C1C210945346fb82Aa49",
+        price,
+      }).success,
+    ).toBe(true);
+    expect(getPriceForIdentityChange(next, next)).toBeNull();
+  });
+
+  it("does not reset stock prices on ticker changes", () => {
+    expect(
+      getPriceForIdentityChange(
+        { kind: "stock", ticker: "AAPL" },
+        { kind: "stock", ticker: "TSLA" },
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("getWalletAddressError", () => {
+  const sol = "So11111111111111111111111111111111111111112";
+
+  it("allows new Bitcoin and EVM wallets, including Bitcoin matching legacy Base58", () => {
+    expect(
+      getWalletAddressError("wallet", "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4"),
+    ).toBeNull();
+    expect(
+      getWalletAddressError(
+        "wallet",
+        "0x396343362be2A4dA1cE0C1C210945346fb82Aa49",
+      ),
+    ).toBeNull();
+  });
+
+  it("allows only unchanged legacy Solana wallets", () => {
+    expect(getWalletAddressError("wallet", sol)).not.toBeNull();
+    expect(
+      getWalletAddressError("wallet", sol, {
+        kind: "crypto",
+        wallet_address: sol,
+      }),
+    ).not.toBeNull();
+    expect(
+      getWalletAddressError("wallet", sol, {
+        kind: "wallet",
+        wallet_address: "So11111111111111111111111111111111111111113",
+      }),
+    ).not.toBeNull();
+    expect(
+      getWalletAddressError("wallet", ` ${sol} `, {
+        kind: "wallet",
+        wallet_address: sol,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not restrict non-wallet assets or accept missing wallet addresses", () => {
+    expect(getWalletAddressError("crypto", null)).toBeNull();
+    expect(getWalletAddressError("wallet", null)).not.toBeNull();
+    expect(getWalletAddressError("wallet", "not-an-address")).not.toBeNull();
   });
 });
 

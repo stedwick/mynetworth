@@ -1,21 +1,8 @@
-import { getMobulaAssets } from "./service";
-import { mapMobulaAssetsToPrices, parseSymbolsParam } from "./utils";
+import { isSupportedCryptoSymbol } from "@/app/lib/crypto-assets";
+import { getCryptoPrices } from "./service";
+import { parseSymbolsParam } from "./utils";
 
 export async function GET(request: Request): Promise<Response> {
-  const apiKey = process.env.MOBULA_API_KEY;
-
-  if (!apiKey) {
-    return Response.json(
-      { error: "Missing MOBULA_API_KEY" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      },
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const symbolsParam = searchParams.get("symbols");
   const symbols = parseSymbolsParam(symbolsParam);
@@ -27,9 +14,22 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  if (!symbols.every(isSupportedCryptoSymbol)) {
+    return Response.json(
+      { error: "Unsupported crypto symbol" },
+      { status: 400 },
+    );
+  }
+  const apiKey = process.env.ANKR_API_KEY;
+  if (!apiKey?.trim()) {
+    return Response.json(
+      { error: "Missing ANKR_API_KEY" },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   try {
-    const data = await getMobulaAssets(symbols, apiKey);
-    const prices = mapMobulaAssetsToPrices(data.dataArray ?? []);
+    const prices = await getCryptoPrices(symbols, apiKey);
 
     return Response.json(prices, {
       headers: {
@@ -39,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
     });
   } catch {
     return Response.json(
-      { error: "Mobula request failed" },
+      { error: "Ankr request failed" },
       {
         status: 502,
         headers: {

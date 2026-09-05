@@ -4,6 +4,11 @@ import type { Selectable } from "kysely";
 import type { AssetKind } from "@/app/lib/networth";
 import type { DB } from "@/app/lib/db-types";
 import {
+  isBtcAddress,
+  isEthAddress,
+  isSolAddress,
+} from "@/app/api/crypto/wallet/utils";
+import {
   centsToPriceString,
   parseNumericString,
   toNumericString,
@@ -31,16 +36,38 @@ export const assetFormSchema = z
     quantity: numericString("Quantity must be a number."),
   })
   .superRefine((data, ctx) => {
-    if (data.kind === "wallet" && data.walletAddress.length === 0) {
+    if (
+      data.kind === "wallet" &&
+      !isBtcAddress(data.walletAddress) &&
+      !isEthAddress(data.walletAddress) &&
+      !isSolAddress(data.walletAddress)
+    ) {
       ctx.addIssue({
         code: "custom",
-        message: "Wallet address is required.",
+        message: data.walletAddress
+          ? "Enter a Bitcoin or EVM wallet address."
+          : "Wallet address is required.",
         path: ["walletAddress"],
       });
     }
   });
 
 export type AssetEditFormValues = z.infer<typeof assetFormSchema>;
+
+export const getPriceForIdentityChange = (
+  current: Pick<AssetEditFormValues, "kind" | "ticker">,
+  next: Pick<AssetEditFormValues, "kind" | "ticker">,
+): string | null => {
+  if (
+    current.kind === next.kind &&
+    current.ticker.trim().toUpperCase() === next.ticker.trim().toUpperCase()
+  ) {
+    return null;
+  }
+  if (next.kind === "crypto") return "";
+  if (next.kind === "wallet" && current.kind !== "wallet") return "0";
+  return null;
+};
 
 export type NormalizedAssetFormValues = {
   name: string;
@@ -55,6 +82,26 @@ export type NormalizedAssetFormValues = {
 
 export type AssetFormRecord = Selectable<DB["assets"]> & {
   category_name: string;
+};
+
+export const getWalletAddressError = (
+  kind: string,
+  walletAddress: string | null,
+  existing?: { kind: string; wallet_address: string | null },
+): string | null => {
+  if (kind !== "wallet") return null;
+  const address = walletAddress?.trim() ?? "";
+  if (!address) return "Wallet address is required.";
+  // Bitcoin Base58 addresses can also match the legacy Solana format.
+  if (isBtcAddress(address) || isEthAddress(address)) return null;
+  if (
+    isSolAddress(address) &&
+    existing?.kind === "wallet" &&
+    existing.wallet_address?.trim() === address
+  ) {
+    return null;
+  }
+  return "Enter a Bitcoin or EVM wallet address. Existing Solana wallets can only keep their current address.";
 };
 
 const parseCurrencyToCents = (value: string): number => {
@@ -76,7 +123,11 @@ export const normalizeAssetFormValues = (
     categoryInput,
     kind: parsed.kind,
     walletAddress: walletAddress.length > 0 ? walletAddress : null,
-    quantity: parseNumericString(parsed.quantity),
+    quantity:
+      parsed.kind === "wallet" &&
+      (isBtcAddress(walletAddress) || isEthAddress(walletAddress))
+        ? 1
+        : parseNumericString(parsed.quantity),
     valueCents: parseCurrencyToCents(parsed.price),
     sortOrder: parseNumericString(parsed.order),
   };

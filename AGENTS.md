@@ -79,3 +79,12 @@
 - Don’t run the app server or database migrations from automation; keep failures loud rather than blanket `try/catch`.
 - After major changes, update the README.md for humans and AGENTS.md for LLMs. If either is longer than 100 lines, condense.
 - Refer to app/lib/db-types.ts for a typed schema of our database.
+
+## Crypto Integration
+
+- Ankr only: `ANKR_API_KEY` stays server-side; request URLs contain credentials and must never be logged. Shared HTTP/RPC handling lives in `app/lib/services/ankr.service.ts`.
+- Wallets: explicit 17-chain EVM allowlist, `onlyWhitelisted: true`, and validated `totalBalanceUsd`; BTC Blockbook `details=basic&secondary=usd` and `secondaryValue`. Do not substitute WBTC pricing for BTC.
+- Solana wallets and unsupported symbols (including SOL/S/MON) are intentionally skipped, preserving values and freshness. Sonic/Monad are excluded from EVM totals. Restore only after verifying actual Ankr capabilities.
+- Standalone quote/search identities come from `app/lib/crypto-assets.ts`; symbols are not unique on-chain. No unfiltered catalog symbol matching or fabricated $1 crypto price fallback.
+- On-demand refresh retains `PRICE_REFRESH_SECONDS` (default 3600), bounds concurrency, and timestamps successes only. Do not add provider caching underneath a new successful DB timestamp. Successful wallet totals use quantity 1; unchanged legacy Solana values remain untouched.
+- Crypto service tests isolate server-only/module mocks in subprocesses. Never run app servers or live database mutations for tests.

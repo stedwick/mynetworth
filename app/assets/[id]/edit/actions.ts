@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import {
   assetFormSchema,
+  getWalletAddressError,
   normalizeAssetFormValues,
   type AssetEditFormValues,
 } from "@/app/lib/asset-form";
@@ -40,6 +41,12 @@ export async function updateAsset(
   }
 
   const normalized = normalizeAssetFormValues(parsed.data);
+  const walletError = getWalletAddressError(
+    normalized.kind,
+    normalized.walletAddress,
+    existing,
+  );
+  if (walletError) return { error: walletError };
 
   await upsertAssetForUser(data.user.id, assetId, normalized);
 
