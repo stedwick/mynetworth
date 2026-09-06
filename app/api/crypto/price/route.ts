@@ -1,4 +1,7 @@
-import { isSupportedCryptoSymbol } from "@/app/lib/crypto-assets";
+import {
+  isValidCryptoSymbol,
+  usesAnkrCryptoPrice,
+} from "@/app/lib/crypto-assets";
 import { getCryptoPrices } from "./service";
 import { parseSymbolsParam } from "./utils";
 
@@ -14,14 +17,18 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  if (!symbols.every(isSupportedCryptoSymbol)) {
-    return Response.json(
-      { error: "Unsupported crypto symbol" },
-      { status: 400 },
-    );
+  if (
+    !symbols.every(isValidCryptoSymbol) ||
+    symbolsParam
+      ?.split(",")
+      .some((symbol) =>
+        symbol.trim() ? !isValidCryptoSymbol(symbol) : /\p{Cc}/u.test(symbol),
+      )
+  ) {
+    return Response.json({ error: "Invalid crypto symbol" }, { status: 400 });
   }
   const apiKey = process.env.ANKR_API_KEY;
-  if (!apiKey?.trim()) {
+  if (symbols.some(usesAnkrCryptoPrice) && !apiKey?.trim()) {
     return Response.json(
       { error: "Missing ANKR_API_KEY" },
       { status: 500, headers: { "Cache-Control": "no-store" } },
@@ -29,7 +36,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const prices = await getCryptoPrices(symbols, apiKey);
+    const prices = await getCryptoPrices(symbols, apiKey ?? "");
 
     return Response.json(prices, {
       headers: {
@@ -39,7 +46,7 @@ export async function GET(request: Request): Promise<Response> {
     });
   } catch {
     return Response.json(
-      { error: "Ankr request failed" },
+      { error: "Crypto price request failed" },
       {
         status: 502,
         headers: {

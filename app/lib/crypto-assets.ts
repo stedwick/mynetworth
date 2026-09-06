@@ -3,6 +3,7 @@ type CryptoAsset = {
   name: string;
 } & (
   | { blockchain: "btc" }
+  | { blockchain: "yahoo"; yahooSymbol: string }
   | {
       blockchain:
         | "eth"
@@ -15,7 +16,6 @@ type CryptoAsset = {
     }
 );
 
-// TODO: Enable Solana, Sonic, and Monad only after provider support is verified.
 // ERC-20 identities checked against Uniswap's default token list, not symbol lookup.
 export const cryptoAssets = [
   { symbol: "BTC", name: "Bitcoin", blockchain: "btc" },
@@ -77,10 +77,44 @@ export const cryptoAssets = [
     blockchain: "eth",
     contractAddress: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
   },
+  {
+    symbol: "SOL",
+    name: "Solana",
+    blockchain: "yahoo",
+    yahooSymbol: "SOL-USD",
+  },
+  { symbol: "ZEC", name: "Zcash", blockchain: "yahoo", yahooSymbol: "ZEC-USD" },
+  { symbol: "TRX", name: "TRON", blockchain: "yahoo", yahooSymbol: "TRX-USD" },
+  {
+    symbol: "FIL",
+    name: "Filecoin",
+    blockchain: "yahoo",
+    yahooSymbol: "FIL-USD",
+  },
 ] as const satisfies readonly CryptoAsset[];
 
-export const getCryptoAsset = (symbol: string): CryptoAsset | undefined =>
-  cryptoAssets.find((asset) => asset.symbol === symbol.trim().toUpperCase());
+export const isValidCryptoSymbol = (symbol: string): boolean =>
+  !/\p{Cc}/u.test(symbol) &&
+  /^[A-Z0-9][A-Z0-9.-]{0,31}$/.test(symbol.trim().toUpperCase());
 
-export const isSupportedCryptoSymbol = (symbol: string): boolean =>
-  getCryptoAsset(symbol) !== undefined;
+export const getCryptoAsset = (symbol: string): CryptoAsset | undefined => {
+  if (!isValidCryptoSymbol(symbol)) return undefined;
+  const normalized = symbol.trim().toUpperCase();
+  return (
+    cryptoAssets.find((asset) => asset.symbol === normalized) ?? {
+      symbol: normalized,
+      name: normalized,
+      blockchain: "yahoo",
+      yahooSymbol: normalized.endsWith("-USD")
+        ? normalized
+        : `${normalized}-USD`,
+    }
+  );
+};
+
+export const usesAnkrCryptoPrice = (symbol: string): boolean =>
+  cryptoAssets.some(
+    (asset) =>
+      asset.symbol === symbol.trim().toUpperCase() &&
+      asset.blockchain !== "yahoo",
+  );

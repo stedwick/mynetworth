@@ -200,7 +200,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
   it("logs and skips unsupported-only holdings without credentials, providers, or writes", async () => {
     delete process.env.ANKR_API_KEY;
     rows = [
-      ...[" sol ", "S", "MON", "UNKNOWN", ""].map((symbol) =>
+      ...["#SOL", "_INVALID", "NOT SUPPORTED", "#UNKNOWN", ""].map((symbol) =>
         asset("crypto", symbol),
       ),
       ...[sol, "invalid", ""].map((address) => asset("wallet", address)),
@@ -219,10 +219,10 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     expect(rows).toEqual(old);
     expect(logFinance.mock.calls).toEqual(
       [
-        "SOL crypto price",
-        "S crypto price",
-        "MON crypto price",
-        "UNKNOWN crypto price",
+        "#SOL crypto price",
+        "_INVALID crypto price",
+        "NOT SUPPORTED crypto price",
+        "#UNKNOWN crypto price",
         " crypto price",
         "SOL wallet So1111...1112",
         "unsupported wallet (invalid address)",
@@ -232,6 +232,59 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
         `Skipping ${label}: automatic pricing is not supported; keeping its saved value.`,
       ]),
     );
+  });
+
+  it("attempts valid unmapped quotes without an Ankr key and counts failures instead of skips", async () => {
+    delete process.env.ANKR_API_KEY;
+    rows = [
+      ...[" sol ", "SOL", "S", "MON", "UNKNOWN"].map((symbol) =>
+        asset("crypto", symbol),
+      ),
+      asset("wallet", sol),
+    ];
+    const old = structuredClone(rows);
+    expect(await refresh("user-a")).toEqual({
+      updated: 0,
+      failed: 5,
+      skipped: 1,
+    });
+    expect(crypto.mock.calls).toEqual(
+      ["MON", "S", "SOL", "UNKNOWN"].map((symbol) => [[symbol], ""]),
+    );
+    expect(wallet).not.toHaveBeenCalled();
+    expect(yahoo).not.toHaveBeenCalled();
+    expect(writes()).toEqual([]);
+    expect(rows).toEqual(old);
+    expect(logFinance.mock.calls).toEqual([
+      [
+        "skip",
+        "Skipping SOL wallet So1111...1112: automatic pricing is not supported; keeping its saved value.",
+      ],
+    ]);
+  });
+
+  it("refreshes Yahoo-only crypto without an Ankr key while preserving unsupported Solana wallets", async () => {
+    delete process.env.ANKR_API_KEY;
+    rows = [
+      ...["SOL", "ZEC", "TRX", "FIL"].map((symbol) => asset("crypto", symbol)),
+      asset("wallet", sol),
+    ];
+    const old = structuredClone(rows);
+    crypto.mockImplementation(async ([symbol]) => ({ [symbol]: 12.34 }));
+    expect(await refresh("user-a")).toEqual({
+      updated: 4,
+      failed: 0,
+      skipped: 1,
+    });
+    expect(crypto.mock.calls).toEqual(
+      ["FIL", "SOL", "TRX", "ZEC"].map((symbol) => [[symbol], ""]),
+    );
+    expect(writes().map(([, params]) => params)).toEqual([
+      ["FIL", 1234, "SOL", 1234, "TRX", 1234, "ZEC", 1234, "crypto", startedAt],
+    ]);
+    expect(wallet).not.toHaveBeenCalled();
+    expect(yahoo).not.toHaveBeenCalled();
+    expect(rows).toEqual(old);
   });
 
   it("classifies all stored rows but only refreshes stale supported assets and counts stale rows", async () => {
@@ -256,8 +309,8 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     wallet.mockResolvedValue(10);
     expect(await refresh("user-a")).toEqual({
       updated: 6,
-      failed: 0,
-      skipped: 2,
+      failed: 1,
+      skipped: 1,
     });
     expect(logFinance.mock.calls).toEqual([
       [
@@ -270,11 +323,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       ],
       [
         "skip",
-        "Skipping SOL crypto price: automatic pricing is not supported; keeping its saved value.",
-      ],
-      [
-        "skip",
-        "Skipping MON crypto price: automatic pricing is not supported; keeping its saved value.",
+        "Skipping MON crypto price: its saved price is still fresh (refresh interval: 3600 seconds).",
       ],
       [
         "skip",
@@ -290,7 +339,10 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       ],
     ]);
     expect(yahoo.mock.calls).toEqual([[["AAPL"]]]);
-    expect(crypto.mock.calls).toEqual([[["ETH"], key]]);
+    expect(crypto.mock.calls).toEqual([
+      [["ETH"], key],
+      [["SOL"], key],
+    ]);
     expect(wallet.mock.calls).toEqual([[btc, key]]);
     expect(writes().map(([, params]) => params)).toEqual([
       ["AAPL", 1200, "stock", startedAt],
@@ -328,7 +380,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
         ],
         [
           "skip",
-          "Skipping SOL crypto price: automatic pricing is not supported; keeping its saved value.",
+          `Skipping SOL crypto price: its saved price is still fresh (refresh interval: ${seconds} seconds).`,
         ],
         [
           "skip",
@@ -368,12 +420,16 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     yahoo.mockResolvedValue([{ symbol: "GOOD", regularMarketPrice: 5 }]);
     expect(await refresh("user-a")).toEqual({
       updated: 6,
-      failed: 6,
-      skipped: 6,
+      failed: 10,
+      skipped: 2,
     });
     expect(crypto.mock.calls).toEqual([
       [["BTC"], key],
       [["ETH"], key],
+      [["MON"], key],
+      [["S"], key],
+      [["SOL"], key],
+      [["UNKNOWN"], key],
     ]);
     expect(wallet.mock.calls).toEqual([
       [evm.toLowerCase(), key],
@@ -386,17 +442,12 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     ]);
     expect(query).toHaveBeenCalledTimes(4);
     expect(logFinance.mock.calls).toEqual(
-      [
-        "SOL crypto price",
-        "S crypto price",
-        "MON crypto price",
-        "UNKNOWN crypto price",
-        "SOL wallet So1111...1112",
-        "unsupported wallet (invalid address)",
-      ].map((label) => [
-        "skip",
-        `Skipping ${label}: automatic pricing is not supported; keeping its saved value.`,
-      ]),
+      ["SOL wallet So1111...1112", "unsupported wallet (invalid address)"].map(
+        (label) => [
+          "skip",
+          `Skipping ${label}: automatic pricing is not supported; keeping its saved value.`,
+        ],
+      ),
     );
   });
 

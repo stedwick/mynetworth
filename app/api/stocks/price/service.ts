@@ -6,6 +6,7 @@ import YahooFinance from "yahoo-finance2";
 import {
   mapYahooQuotesToPrices,
   parseYahooQuotes,
+  parseYahooCryptoQuotes,
   type YahooQuote,
 } from "./utils";
 import { logFinance } from "@/app/lib/finance-log";
@@ -25,6 +26,7 @@ const getCachedYahooQuotes = async (symbols: string[]) => {
 
 export const getYahooQuotes = async (
   symbols: string[],
+  kind: "stock" | "crypto" = "stock",
 ): Promise<YahooQuote[]> => {
   const startedAt = performance.timeOrigin + performance.now();
   const requested = [
@@ -32,12 +34,21 @@ export const getYahooQuotes = async (
   ].filter(Boolean);
   let result: Awaited<ReturnType<typeof getCachedYahooQuotes>>;
   try {
-    result = await getCachedYahooQuotes(symbols);
+    result =
+      kind === "crypto"
+        ? {
+            quotes: parseYahooCryptoQuotes(
+              await yahooFinance.quote(requested, { return: "array" }),
+              requested,
+            ),
+            fetchedAt: performance.timeOrigin + performance.now(),
+          }
+        : await getCachedYahooQuotes(symbols);
   } catch (error) {
     for (const symbol of requested) {
       logFinance(
         "error",
-        `Yahoo Finance could not fetch the stock price for ${symbol}.`,
+        `Yahoo Finance could not fetch the ${kind} price for ${symbol}.`,
       );
     }
     throw error;
@@ -45,7 +56,7 @@ export const getYahooQuotes = async (
   const { quotes, fetchedAt } = result;
   const prices = mapYahooQuotesToPrices(quotes);
   // Only a result predating this call came from Next's hours cache.
-  const cached = fetchedAt < startedAt;
+  const cached = kind === "stock" && fetchedAt < startedAt;
   const minutes = cached
     ? Math.max(
         0,
@@ -62,7 +73,7 @@ export const getYahooQuotes = async (
     if (!Object.hasOwn(prices, symbol)) {
       logFinance(
         "error",
-        `Yahoo Finance returned no usable stock price for ${symbol}.`,
+        `Yahoo Finance returned no usable ${kind} price for ${symbol}.`,
       );
     } else if (cached) {
       logFinance(
@@ -72,7 +83,7 @@ export const getYahooQuotes = async (
     } else {
       logFinance(
         "success",
-        `Using Yahoo Finance, ${symbol} stock price is ${formatUsd(prices[symbol])} USD (fresh).`,
+        `Using Yahoo Finance, ${symbol} ${kind} price is ${formatUsd(prices[symbol])} USD (fresh).`,
       );
     }
   }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { parseYahooCryptoQuotes } from "@/app/api/stocks/price/utils";
 import {
   parseAnkrBtcPriceUsd,
   parseAnkrTokenPriceUsd,
@@ -52,4 +53,26 @@ describe("Ankr prices", () => {
       expect(() => parseAnkrBtcPriceUsd(payload)).toThrow();
     }
   });
+});
+
+it("validates exact Yahoo crypto USD quotes with optional usable market times", () => {
+  const quote = {
+    symbol: "ZEC-USD",
+    quoteType: "CRYPTOCURRENCY",
+    currency: "USD",
+    regularMarketPrice: 42,
+  };
+  for (const regularMarketTime of [
+    undefined,
+    null,
+    new Date("2026-01-01"),
+    1_788_000_000,
+  ]) {
+    const value = { ...quote, regularMarketTime };
+    expect(parseYahooCryptoQuotes([value], ["ZEC-USD"])).toEqual([value]);
+  }
+  expect(() => parseYahooCryptoQuotes([quote], ["FIL-USD"])).toThrow();
+  expect(() =>
+    parseYahooCryptoQuotes([{ ...quote, currency: "EUR" }], ["ZEC-USD"]),
+  ).toThrow();
 });

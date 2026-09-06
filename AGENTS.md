@@ -82,10 +82,10 @@
 
 ## Crypto Integration
 
-- Ankr only: `ANKR_API_KEY` stays server-side; request URLs contain credentials and must never be logged. Shared HTTP/RPC handling lives in `app/lib/services/ankr.service.ts`.
+- Keep things simple: reuse Yahoo Finance and Ankr, without adding providers or oracle plumbing. `ANKR_API_KEY` stays server-side; request URLs contain credentials and must never be logged. Shared HTTP/RPC handling lives in `app/lib/services/ankr.service.ts`.
 - Wallets: explicit 17-chain EVM allowlist, `onlyWhitelisted: true`, and validated `totalBalanceUsd`; BTC Blockbook `details=basic&secondary=usd` and `secondaryValue`. Do not substitute WBTC pricing for BTC.
-- Solana wallets and unsupported symbols (including SOL/S/MON) are intentionally skipped, preserving values and freshness. Sonic/Monad are excluded from EVM totals. Restore only after verifying actual Ankr capabilities.
-- Standalone quote/search identities come from `app/lib/crypto-assets.ts`; symbols are not unique on-chain. No unfiltered catalog symbol matching or fabricated $1 crypto price fallback.
+- Solana wallets are currently skipped, preserving values and freshness; enabling full wallet valuation remains separate from SOL spot pricing. Sonic/Monad are excluded from EVM totals until their complete valuation is verified.
+- Standalone quote/search identities come from `app/lib/crypto-assets.ts`. Valid symbols without an Ankr identity use Yahoo's exact USD crypto pairs (SOL/ZEC/TRX/FIL live-tested); do not silently skip valid symbols. Yahoo crypto quotes require USD/CRYPTOCURRENCY and bypass service caching; stock quotes retain the hours cache. No unfiltered on-chain symbol matching or fabricated $1 price fallback.
 - On-demand refresh retains `PRICE_REFRESH_SECONDS` (default 3600), bounds concurrency, and timestamps successes only. Do not add provider caching underneath a new successful DB timestamp. Successful wallet totals use quantity 1; unchanged legacy Solana values remain untouched.
 - Crypto service tests isolate server-only/module mocks in subprocesses. Never run app servers or live database mutations for tests.
 - Finance logs use `app/lib/finance-log.ts` (stream writes, not replayed console calls): one plain-English line per wallet/quote with abbreviated address and USD result. Color only bracketed SUCCESS/CACHE/SKIP/FAILURE labels. Yahoo logs each symbol and price, retaining its `hours` cache with clear fresh/cached messages. Never log credentials, full addresses, URLs, bodies, request IDs, HTTP traces, or counters. Honor NO_COLOR/FORCE_COLOR.

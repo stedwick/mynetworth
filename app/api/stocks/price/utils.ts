@@ -13,6 +13,30 @@ export const parseYahooQuotes = (data: unknown): YahooQuote[] => {
   return yahooQuoteArraySchema.parse(data);
 };
 
+const yahooCryptoQuoteSchema = yahooQuoteSchema.extend({
+  quoteType: z.literal("CRYPTOCURRENCY"),
+  currency: z.literal("USD"),
+  regularMarketPrice: z.number().finite().positive(),
+  regularMarketTime: z
+    .union([
+      z.date().refine((date) => date.getTime() > 0),
+      z.number().finite().positive(),
+    ])
+    .nullish(),
+});
+
+export const parseYahooCryptoQuotes = (
+  data: unknown,
+  symbols: string[],
+): YahooQuote[] => {
+  const quotes = parseYahooQuotes(data);
+  return symbols.map((symbol) =>
+    yahooCryptoQuoteSchema.parse(
+      quotes.find((quote) => quote.symbol === symbol),
+    ),
+  );
+};
+
 export const parseSymbolsParam = (param: string | null): string[] => {
   if (!param) return [];
 

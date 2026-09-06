@@ -4,7 +4,10 @@ import type { Selectable } from "kysely";
 
 import { sql } from "@/app/lib/db";
 import type { DB } from "@/app/lib/db-types";
-import { isSupportedCryptoSymbol } from "@/app/lib/crypto-assets";
+import {
+  isValidCryptoSymbol,
+  usesAnkrCryptoPrice,
+} from "@/app/lib/crypto-assets";
 import {
   chunkList,
   collectRefreshPrices,
@@ -84,7 +87,7 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
       asset.kind === "wallet"
         ? isSupportedWalletAddress(address)
         : asset.kind === "crypto"
-          ? isSupportedCryptoSymbol(asset.ticker_symbol)
+          ? isValidCryptoSymbol(asset.ticker_symbol)
           : true;
     if (supported && asset.refresh_due) continue;
     const label =
@@ -108,17 +111,20 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
   const stockSymbols = normalizeSymbols(
     assets.filter((a) => a.kind === "stock").map((a) => a.ticker_symbol),
   );
-  // TODO: Restore SOL/S/MON and other unsupported assets only with verified Ankr pricing.
+  // Attempt every valid ticker; unmapped coins use Yahoo's USD crypto pairs.
   const cryptoSymbols = normalizeSymbols(
     assets.filter((a) => a.kind === "crypto").map((a) => a.ticker_symbol),
-  ).filter(isSupportedCryptoSymbol);
+  ).filter(isValidCryptoSymbol);
   const walletAddresses = normalizeWalletAddresses(
     assets
       .filter((a) => a.kind === "wallet")
       .map((a) => a.wallet_address ?? ""),
   );
   const apiKey = process.env.ANKR_API_KEY;
-  if ((cryptoSymbols.length || walletAddresses.length) && !apiKey?.trim()) {
+  if (
+    (cryptoSymbols.some(usesAnkrCryptoPrice) || walletAddresses.length) &&
+    !apiKey?.trim()
+  ) {
     logFinance(
       "error",
       "Cannot refresh crypto: ANKR_API_KEY is not configured.",

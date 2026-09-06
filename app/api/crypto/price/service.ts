@@ -1,6 +1,7 @@
 import "server-only";
 
-import { getCryptoAsset } from "@/app/lib/crypto-assets";
+import { getYahooQuotes } from "@/app/api/stocks/price/service";
+import { getCryptoAsset, isValidCryptoSymbol } from "@/app/lib/crypto-assets";
 import { logFinance } from "@/app/lib/finance-log";
 import { formatUsd } from "@/app/lib/networth";
 import {
@@ -13,16 +14,24 @@ export const getCryptoPrices = async (
   symbols: string[],
   apiKey: string,
 ): Promise<Record<string, number>> => {
+  if (!symbols.every(isValidCryptoSymbol)) {
+    throw new Error("Invalid crypto symbol");
+  }
   const assets = [
     ...new Set(symbols.map((symbol) => symbol.trim().toUpperCase())),
   ].map((symbol) => {
     const asset = getCryptoAsset(symbol);
-    if (!asset) throw new Error("Unsupported crypto symbol");
+    if (!asset) throw new Error("Invalid crypto symbol");
     return asset;
   });
   const prices: Record<string, number> = {};
-  // Keep provider concurrency bounded; there are only a few canonical identities.
+  // Keep provider concurrency bounded.
   for (const asset of assets) {
+    if (asset.blockchain === "yahoo") {
+      const [quote] = await getYahooQuotes([asset.yahooSymbol], "crypto");
+      prices[asset.symbol] = quote.regularMarketPrice!;
+      continue;
+    }
     try {
       if (asset.blockchain === "btc") {
         prices[asset.symbol] = parseAnkrBtcPriceUsd(

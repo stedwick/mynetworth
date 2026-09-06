@@ -9,6 +9,7 @@ import {
 } from "bun:test";
 
 import type { logFinance } from "@/app/lib/finance-log";
+import type { getYahooQuotes } from "@/app/api/stocks/price/service";
 
 // Next supplies server-only. Isolate the Bun shim and fetch mocks from other tests.
 if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
@@ -29,6 +30,10 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
   mock.module("server-only", () => ({}));
   const financeLog = mock((..._args: Parameters<typeof logFinance>) => {});
   mock.module("@/app/lib/finance-log", () => ({ logFinance: financeLog }));
+  const yahoo = mock<typeof getYahooQuotes>(async () => []);
+  mock.module("@/app/api/stocks/price/service", () => ({
+    getYahooQuotes: yahoo,
+  }));
   const { requestAnkrRpc, requestAnkrBtc } =
     await import("@/app/lib/services/ankr.service");
   const { getWalletBalanceUsd } = await import("./wallet/service");
@@ -63,6 +68,8 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
   beforeEach(() => {
     process.env.ANKR_API_KEY = apiKey;
     financeLog.mockClear();
+    yahoo.mockReset();
+    yahoo.mockRejectedValue(new Error("Missing Yahoo crypto quote"));
     fetchMock.mockReset();
     fetchMock.mockRejectedValue(new Error("Unexpected provider access"));
   });
@@ -208,16 +215,79 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     ]);
   });
 
-  it("rejects unsupported assets before any provider requests", async () => {
-    for (const symbol of ["SOL", "S", "MON", "FAKE", ""]) {
+  it("rejects invalid symbols and unsupported wallets before any provider requests", async () => {
+    for (const symbol of ["#SOL", "_INVALID", "NOT SUPPORTED", ""]) {
       await expect(getCryptoPrices(["ETH", symbol], apiKey)).rejects.toThrow(
-        "Unsupported crypto symbol",
+        "Invalid crypto symbol",
       );
     }
     await expect(getWalletBalanceUsd(solAddress, apiKey)).rejects.toThrow(
       "Unsupported wallet address",
     );
     expect(await getCryptoPrices([], apiKey)).toEqual({});
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(financeLog).not.toHaveBeenCalled();
+    expect(yahoo).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["SOL", 150],
+    ["ZEC", 35],
+    ["TRX", 0.25],
+    ["FIL", 3.5],
+    ["S", 0.4],
+    ["MON", 0.03],
+    ["UNMAPPED", 2.5],
+    ["ABC.X", 4],
+    ["SOL-USD", 150],
+  ] as const)(
+    "prices %s through Yahoo without Ankr credentials or a crypto cache",
+    async (symbol, price) => {
+      delete process.env.ANKR_API_KEY;
+      const yahooSymbol = symbol.endsWith("-USD") ? symbol : `${symbol}-USD`;
+      yahoo.mockResolvedValue([
+        {
+          symbol: yahooSymbol,
+          regularMarketPrice: price,
+          quoteType: "CRYPTOCURRENCY",
+          currency: "USD",
+        },
+      ]);
+      expect(
+        await getCryptoPrices([` ${symbol.toLowerCase()} `, symbol], ""),
+      ).toEqual({ [symbol]: price });
+      const response = await getPrice(
+        new Request(`https://example.test?symbols=${symbol.toLowerCase()}`),
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ [symbol]: price });
+      expect(yahoo.mock.calls).toEqual([
+        [[yahooSymbol], "crypto"],
+        [[yahooSymbol], "crypto"],
+      ]);
+      expect(fetchMock).not.toHaveBeenCalled();
+      // Yahoo owns its quote logs; the crypto wrapper must not duplicate them.
+      expect(financeLog).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects missing unknown Yahoo quotes without attempting Ankr or fabricating a price", async () => {
+    delete process.env.ANKR_API_KEY;
+    await expect(getCryptoPrices(["UNKNOWN"], "")).rejects.toThrow(
+      "Missing Yahoo crypto quote",
+    );
+    const response = await getPrice(
+      new Request("https://example.test?symbols=UNKNOWN"),
+    );
+    expect(response.status).toBe(502);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      error: "Crypto price request failed",
+    });
+    expect(yahoo.mock.calls).toEqual([
+      [["UNKNOWN-USD"], "crypto"],
+      [["UNKNOWN-USD"], "crypto"],
+    ]);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(financeLog).not.toHaveBeenCalled();
   });
@@ -341,6 +411,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
             ]
           : ["error", `Ankr could not fetch the price of ${symbol}.`],
       ]);
+      expect(yahoo).not.toHaveBeenCalled();
     },
   );
 
@@ -443,7 +514,8 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
       ).status,
     ).toBe(400);
     expect(
-      (await getPrice(new Request("https://example.test?symbols=SOL"))).status,
+      (await getPrice(new Request("https://example.test?symbols=%23SOL")))
+        .status,
     ).toBe(400);
     expect((await getWallet(new Request("https://example.test"))).status).toBe(
       400,
@@ -462,6 +534,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
       ).status,
     ).toBe(500);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(yahoo).not.toHaveBeenCalled();
   });
 
   it("preserves wallet and price response contracts", async () => {
@@ -492,6 +565,8 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     );
     expect(price.status).toBe(502);
     expect(price.headers.get("Cache-Control")).toBe("no-store");
-    expect(await price.json()).toEqual({ error: "Ankr request failed" });
+    expect(await price.json()).toEqual({
+      error: "Crypto price request failed",
+    });
   });
 }

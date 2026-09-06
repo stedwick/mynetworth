@@ -191,6 +191,81 @@ if (process.env.YAHOO_SERVICE_TEST_CHILD !== "1") {
     expect(logs).toEqual([]);
   });
 
+  it("fetches fresh crypto quotes every time without stock caching or duplicate logs", async () => {
+    const cryptoQuote = {
+      symbol: "SOL-USD",
+      quoteType: "CRYPTOCURRENCY",
+      currency: "USD",
+      regularMarketPrice: 105.75,
+      regularMarketTime: new Date("2026-01-01"),
+    };
+    quote.mockResolvedValue([cryptoQuote]);
+    expect(await getYahooQuotes([" sol-usd ", "SOL-USD"], "crypto")).toEqual([
+      cryptoQuote,
+    ]);
+    quote.mockResolvedValue([{ ...cryptoQuote, regularMarketPrice: 106 }]);
+    expect(
+      (await getYahooQuotes(["SOL-USD"], "crypto"))[0].regularMarketPrice,
+    ).toBe(106);
+    expect(quote).toHaveBeenCalledTimes(2);
+    expect(quote).toHaveBeenCalledWith(["SOL-USD"], { return: "array" });
+    expect(cacheLife).not.toHaveBeenCalled();
+    expect(logs).toHaveLength(2);
+    expect(logs[0].line).toBe(
+      "\u001b[32m[SUCCESS]\u001b[0m Using Yahoo Finance, SOL-USD crypto price is $105.75 USD (fresh).\n",
+    );
+    expect(logs[1].line).toContain("$106.00");
+  });
+
+  it.each([
+    { symbol: "OTHER-USD" },
+    { quoteType: "EQUITY" },
+    { currency: "EUR" },
+    { regularMarketPrice: 0 },
+    { regularMarketPrice: -1 },
+    { regularMarketPrice: Infinity },
+    { regularMarketPrice: NaN },
+    { regularMarketPrice: null },
+    { regularMarketTime: new Date(NaN) },
+    { regularMarketTime: 0 },
+    { regularMarketTime: "invalid" },
+  ])(
+    "rejects unusable crypto quotes with one safe failure: %p",
+    async (invalid) => {
+      quote.mockResolvedValue([
+        {
+          symbol: "SOL-USD",
+          quoteType: "CRYPTOCURRENCY",
+          currency: "USD",
+          regularMarketPrice: 105.75,
+          ...invalid,
+        },
+      ]);
+      await expect(getYahooQuotes(["SOL-USD"], "crypto")).rejects.toThrow();
+      expect(cacheLife).not.toHaveBeenCalled();
+      expect(logs).toEqual([
+        {
+          stream: "stderr",
+          line: "\u001b[31m[FAILURE]\u001b[0m Yahoo Finance could not fetch the crypto price for SOL-USD.\n",
+        },
+      ]);
+    },
+  );
+
+  it("logs a missing unknown pair or provider failure rather than inventing a price", async () => {
+    quote.mockResolvedValue([]);
+    await expect(getYahooQuotes(["UNKNOWN-USD"], "crypto")).rejects.toThrow();
+    quote.mockRejectedValue(new Error("https://secret.test/?key=private"));
+    await expect(getYahooQuotes(["UNKNOWN-USD"], "crypto")).rejects.toThrow();
+    expect(logs).toHaveLength(2);
+    expect(
+      logs.every(
+        ({ line }) => line.includes("[FAILURE]") && !line.includes("secret"),
+      ),
+    ).toBe(true);
+    expect(cacheLife).not.toHaveBeenCalled();
+  });
+
   it.each(["provider", "parse"] as const)(
     "logs one safe failure per normalized symbol for %s failure",
     async (failure) => {

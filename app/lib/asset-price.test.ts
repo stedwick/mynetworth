@@ -70,12 +70,12 @@ describe("fetchPriceLookup", () => {
     }
   });
 
-  it("skips unsupported symbols and already aborted requests without fetching", async () => {
+  it("skips invalid symbols and already aborted requests without fetching", async () => {
     const fetchSpy = spyOn(globalThis, "fetch");
     try {
       const request = new AbortController();
       expect(
-        await fetchPriceLookup("crypto", "SOL", request.signal),
+        await fetchPriceLookup("crypto", "#SOL", request.signal),
       ).toBeNull();
       expect(await fetchPriceLookup("crypto", "", request.signal)).toBeNull();
       request.abort();
@@ -83,6 +83,45 @@ describe("fetchPriceLookup", () => {
         await fetchPriceLookup("crypto", "ETH", request.signal),
       ).toBeNull();
       expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("fetches SOL prices and reports failures without a fake dollar fallback", async () => {
+    const fetchSpy = spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(Response.json({ SOL: 150 }))
+      .mockResolvedValueOnce(new Response(null, { status: 502 }));
+    try {
+      const signal = new AbortController().signal;
+      expect(await fetchPriceLookup("crypto", " sol ", signal)).toEqual({
+        price: 150,
+        error: null,
+      });
+      expect(fetchSpy).toHaveBeenCalledWith("/api/crypto/price?symbols=SOL", {
+        cache: "no-store",
+        signal,
+      });
+      const failed = await fetchPriceLookup("crypto", "SOL", signal);
+      expect(failed?.price).toBeNull();
+      expect(failed?.error).toContain("current price is unchanged");
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("ignores a SOL response that completes after cancellation", async () => {
+    const pending = Promise.withResolvers<Response>();
+    const fetchSpy = spyOn(globalThis, "fetch").mockReturnValue(
+      pending.promise,
+    );
+    try {
+      const request = new AbortController();
+      const result = fetchPriceLookup("crypto", "SOL", request.signal);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      request.abort();
+      pending.resolve(Response.json({ SOL: 150 }));
+      expect(await result).toBeNull();
     } finally {
       fetchSpy.mockRestore();
     }
@@ -147,8 +186,22 @@ describe("getPriceLookupResult", () => {
     }
   });
 
-  it("silently leaves unsupported crypto unchanged even if a price is returned", () => {
-    for (const symbol of ["SOL", "NOT_SUPPORTED", ""]) {
+  it.each(["SOL", "ZEC", "TRX", "FIL", "S", "MON", "UNKNOWN"])(
+    "accepts valid %s prices and reports missing quotes",
+    (symbol) => {
+      expect(getPriceLookupResult("crypto", symbol, { [symbol]: 150 })).toEqual(
+        { price: 150, error: null },
+      );
+      for (const prices of [null, {}, { [symbol]: NaN }, { [symbol]: -1 }]) {
+        const result = getPriceLookupResult("crypto", symbol, prices);
+        expect(result.price).toBeNull();
+        expect(result.error).toContain("current price is unchanged");
+      }
+    },
+  );
+
+  it("silently leaves invalid crypto unchanged even if a price is returned", () => {
+    for (const symbol of ["#SOL", "NOT_SUPPORTED", ""]) {
       expect(getPriceLookupResult("crypto", symbol, { [symbol]: 1 })).toEqual({
         price: null,
         error: null,

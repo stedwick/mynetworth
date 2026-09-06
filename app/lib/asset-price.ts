@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { isSupportedCryptoSymbol } from "@/app/lib/crypto-assets";
+import { isValidCryptoSymbol } from "@/app/lib/crypto-assets";
 
 export const DEFAULT_PRICE_FALLBACK = 1;
 
@@ -31,7 +31,7 @@ export const getPriceLookupResult = (
     return { price: getPriceFromMap(prices ?? {}, symbol), error: null };
   }
   const key = symbol.trim().toUpperCase();
-  if (!isSupportedCryptoSymbol(key)) return { price: null, error: null };
+  if (!isValidCryptoSymbol(key)) return { price: null, error: null };
   const price = prices?.[key];
   if (typeof price === "number" && Number.isFinite(price) && price >= 0) {
     return { price, error: null };
@@ -59,7 +59,7 @@ export const fetchPriceLookup = async (
     signal.aborted ||
     !endpoint ||
     !normalizedSymbol ||
-    (kind === "crypto" && !isSupportedCryptoSymbol(normalizedSymbol))
+    (kind === "crypto" && !isValidCryptoSymbol(normalizedSymbol))
   ) {
     return null;
   }

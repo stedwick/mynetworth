@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
   cryptoAssets,
   getCryptoAsset,
-  isSupportedCryptoSymbol,
+  isValidCryptoSymbol,
+  usesAnkrCryptoPrice,
 } from "@/app/lib/crypto-assets";
 import { GET } from "./route";
 import { parseSearchQueryParam, searchCryptoAssets } from "./utils";
@@ -24,28 +25,35 @@ describe("canonical crypto catalog", () => {
       "ARB",
       "OP",
       "WBTC",
+      "SOL",
+      "ZEC",
+      "TRX",
+      "FIL",
     ]);
     expect(new Set(cryptoAssets.map(({ symbol }) => symbol)).size).toBe(
       cryptoAssets.length,
     );
     for (const asset of cryptoAssets) {
-      expect(isSupportedCryptoSymbol(asset.symbol)).toBe(true);
+      expect(isValidCryptoSymbol(asset.symbol)).toBe(true);
+      expect(usesAnkrCryptoPrice(asset.symbol)).toBe(
+        asset.blockchain !== "yahoo",
+      );
       if ("contractAddress" in asset)
         expect(asset.contractAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
     }
     for (const symbol of [
-      "SOL",
-      "S",
-      "MON",
-      "MATIC",
-      "fakeBTC",
       "",
       "__proto__",
+      "A/B",
+      "A?KEY=secret",
+      "A\nB",
+      "SOL\n",
+      "A".repeat(33),
     ]) {
-      expect(isSupportedCryptoSymbol(symbol)).toBe(false);
+      expect(isValidCryptoSymbol(symbol)).toBe(false);
       expect(getCryptoAsset(symbol)).toBeUndefined();
     }
-    expect(isSupportedCryptoSymbol(" eth ")).toBe(true);
+    expect(isValidCryptoSymbol(" eth ")).toBe(true);
     expect(getCryptoAsset("USDC")).toEqual({
       symbol: "USDC",
       name: "USD Coin",
@@ -56,6 +64,32 @@ describe("canonical crypto catalog", () => {
       symbol: "BTC",
       name: "Bitcoin",
       blockchain: "btc",
+    });
+  });
+
+  it("constructs Yahoo USD pairs for valid unmapped tickers without duplicating USD", () => {
+    for (const symbol of [
+      "S",
+      "MON",
+      "MATIC",
+      "FAKEBTC",
+      "ABC-DEF",
+      "ABC.X",
+      "A".repeat(32),
+    ]) {
+      expect(getCryptoAsset(` ${symbol.toLowerCase()} `)).toEqual({
+        symbol,
+        name: symbol,
+        blockchain: "yahoo",
+        yahooSymbol: `${symbol}-USD`,
+      });
+      expect(usesAnkrCryptoPrice(symbol)).toBe(false);
+    }
+    expect(getCryptoAsset("xxx-usd")).toEqual({
+      symbol: "XXX-USD",
+      name: "XXX-USD",
+      blockchain: "yahoo",
+      yahooSymbol: "XXX-USD",
     });
   });
 });
@@ -87,7 +121,7 @@ describe("crypto search", () => {
   });
 
   it("cannot introduce provider catalog duplicates or disabled tokens", () => {
-    for (const query of ["sol", "sonic", "monad", "fraudulent bitcoin"])
+    for (const query of ["sonic", "monad", "fraudulent bitcoin"])
       expect(searchCryptoAssets(query)).toEqual([]);
     expect(
       searchCryptoAssets("eth").filter(({ symbol }) => symbol === "ETH"),
@@ -112,6 +146,6 @@ describe("crypto search", () => {
       await (
         await GET(new Request("https://example.test/api/crypto/search?q=sol"))
       ).json(),
-    ).toEqual([]);
+    ).toEqual([{ symbol: "SOL", name: "Solana" }]);
   });
 });

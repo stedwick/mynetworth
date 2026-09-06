@@ -45,17 +45,17 @@ Set these in `.env` or `.env.local`:
 
 ## Crypto Data
 
-- Ankr replaces Mobula and BTCScan. No Moralis or Mobula key is required.
+- Use only the existing Yahoo Finance and Ankr integrations. Ankr replaces Mobula and BTCScan; no Moralis or Mobula key is required.
 - Bitcoin wallets use Blockbook address balances with `details=basic&secondary=usd`.
 - EVM wallets aggregate 17 mainnets: Ethereum, Arbitrum, Avalanche, Base, BNB Chain, Fantom, Flare, Gnosis, Linea, Optimism, Polygon, Scroll, Story, Taiko, Telos, Xai, and X Layer. Only Ankr-whitelisted tokens are included; this is not comprehensive DeFi/NFT net worth.
 - Solana wallets are temporarily skipped without errors, retaining their last value and refresh timestamp. Sonic and Monad are excluded from EVM totals; totals may decrease compared with the previous provider.
-- Standalone crypto prices/autocomplete currently support BTC, ETH, BNB, AVAX, POL, USDC, USDT, DAI, LINK, UNI, AAVE, ARB, OP, and WBTC. Identities are explicit in `app/lib/crypto-assets.ts`, never inferred from an arbitrary matching symbol. Unsupported existing symbols are skipped; prices can be entered manually.
+- Standalone crypto prices use the explicit Ankr identities in `app/lib/crypto-assets.ts` where available. Other valid symbols are attempted through Yahoo's USD crypto pairs, including SOL, ZEC, TRX, and FIL. No third provider is needed. A missing quote is a reported failure that preserves the saved value, not a silent skip or a $1 fallback. Autocomplete includes the common supported coins; other tickers can be entered directly.
 - Refresh is on demand when entering `/me` or clicking Refresh, not a background hourly job. Eligible crypto values are fetched without a second service-cache layer. Up to four wallet requests run concurrently. Successful values and timestamps update together; failures preserve old values and are reported. Stocks still use Yahoo.
 - A Bitcoin address is not an entire HD wallet account. XPUB tracking is not implemented.
 
 ### Testing The Migration
 
-Set `ANKR_API_KEY` in the environment used by your Next.js process, then run `bun dev`. Test BTC/EVM wallet creation, crypto autocomplete/price lookup, and Refresh on `/me`. Use `PRICE_REFRESH_SECONDS=0` temporarily to refresh existing fresh rows immediately, then restore `3600`. Existing Solana wallets and unsupported symbols should remain unchanged. No database migration is needed.
+Set `ANKR_API_KEY` in the environment used by your Next.js process, then run `bun dev`. Test BTC/EVM wallet creation, SOL/ZEC/TRX/FIL price lookup, and Refresh on `/me`. Use `PRICE_REFRESH_SECONDS=0` temporarily to refresh existing fresh rows immediately, then restore `3600`. Existing Solana wallets should remain unchanged until full wallet valuation is enabled. No database migration is needed.
 
 ### Reading Refresh Logs
 
