@@ -45,7 +45,7 @@ export const assetFormSchema = z
       ctx.addIssue({
         code: "custom",
         message: data.walletAddress
-          ? "Enter a Bitcoin or EVM wallet address."
+          ? "Enter a Bitcoin, EVM, or Solana wallet address."
           : "Wallet address is required.",
         path: ["walletAddress"],
       });
@@ -87,21 +87,14 @@ export type AssetFormRecord = Selectable<DB["assets"]> & {
 export const getWalletAddressError = (
   kind: string,
   walletAddress: string | null,
-  existing?: { kind: string; wallet_address: string | null },
 ): string | null => {
   if (kind !== "wallet") return null;
   const address = walletAddress?.trim() ?? "";
   if (!address) return "Wallet address is required.";
-  // Bitcoin Base58 addresses can also match the legacy Solana format.
-  if (isBtcAddress(address) || isEthAddress(address)) return null;
-  if (
-    isSolAddress(address) &&
-    existing?.kind === "wallet" &&
-    existing.wallet_address?.trim() === address
-  ) {
+  if (isBtcAddress(address) || isEthAddress(address) || isSolAddress(address)) {
     return null;
   }
-  return "Enter a Bitcoin or EVM wallet address. Existing Solana wallets can only keep their current address.";
+  return "Enter a Bitcoin, EVM, or Solana wallet address.";
 };
 
 const parseCurrencyToCents = (value: string): number => {
@@ -124,10 +117,7 @@ export const normalizeAssetFormValues = (
     kind: parsed.kind,
     walletAddress: walletAddress.length > 0 ? walletAddress : null,
     quantity:
-      parsed.kind === "wallet" &&
-      (isBtcAddress(walletAddress) || isEthAddress(walletAddress))
-        ? 1
-        : parseNumericString(parsed.quantity),
+      parsed.kind === "wallet" ? 1 : parseNumericString(parsed.quantity),
     valueCents: parseCurrencyToCents(parsed.price),
     sortOrder: parseNumericString(parsed.order),
   };

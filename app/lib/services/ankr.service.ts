@@ -71,3 +71,24 @@ export const requestAnkrBtc = async (
     { method: "GET" },
   );
 };
+
+export const requestAnkrSolBalance = async (
+  apiKey: string,
+  address: string,
+): Promise<unknown> => {
+  if (!apiKey.trim()) throw new Error("Missing ANKR_API_KEY");
+  const payload = await requestAnkr(
+    `https://rpc.ankr.com/solana/${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getBalance",
+        params: [address, { commitment: "finalized" }],
+      }),
+    },
+  );
+  return parseAnkrRpcResult(payload);
+};

@@ -19,7 +19,8 @@ export async function GET(request: Request): Promise<Response> {
   if (!isSupportedWalletAddress(addressParam)) {
     return Response.json(
       {
-        error: "Provide a valid EVM or BTC address via ?address=...",
+        error:
+          "Provide a valid EVM, BTC, or Solana address via ?address=... (Solana: native SOL only)",
       },
       { status: 400 },
     );
@@ -48,7 +49,7 @@ export async function GET(request: Request): Promise<Response> {
     });
   } catch {
     return Response.json(
-      { error: "Ankr request failed" },
+      { error: "Wallet balance request failed" },
       {
         status: 502,
         headers: {

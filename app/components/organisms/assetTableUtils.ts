@@ -46,5 +46,5 @@ export function getAssetKindLabel(item: AssetItem) {
     return "EVM wallet";
   }
 
-  return "Solana wallet";
+  return "Solana wallet (SOL only)";
 }

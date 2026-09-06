@@ -12,7 +12,6 @@ import {
   Controller,
   type Control,
   type UseFormSetValue,
-  useFormState,
   useWatch,
 } from "react-hook-form";
 
@@ -81,7 +80,6 @@ export default function AssetEditForm({
   }));
   const selectedKind = useWatch({ control, name: "kind" });
   const walletAddress = useWatch({ control, name: "walletAddress" });
-  const { defaultValues } = useFormState({ control });
   const [walletError, setWalletError] = useState<string | null>(null);
   const tickerValue = useWatch({ control, name: "ticker" }) ?? "";
   const identity = useRef({ kind: selectedKind, ticker: tickerValue });
@@ -161,14 +159,7 @@ export default function AssetEditForm({
           event.preventDefault();
           return;
         }
-        const addressError = getWalletAddressError(
-          selectedKind,
-          walletAddress,
-          {
-            kind: defaultValues?.kind ?? "",
-            wallet_address: defaultValues?.walletAddress ?? null,
-          },
-        );
+        const addressError = getWalletAddressError(selectedKind, walletAddress);
         setWalletError(addressError);
         if (addressError) {
           event.preventDefault();
@@ -224,8 +215,7 @@ export default function AssetEditForm({
               </RadioGroup>
               <p className="text-xs text-slate-500 dark:text-white/50">
                 Examples: Stock (AAPL, TSLA) · Crypto (BTC, ETH) · Crypto Wallet
-                (Bitcoin, Ethereum & EVM addresses) · Manual (Mortgage, Auto
-                Loan)
+                (Bitcoin, EVM, Solana) · Manual (Mortgage, Auto Loan)
               </p>
               <Field.Error
                 match={
@@ -261,6 +251,10 @@ export default function AssetEditForm({
                     <Field.Label className={fieldLabelClassName}>
                       Wallet address
                     </Field.Label>
+                    <p className="text-xs text-slate-500 dark:text-white/50">
+                      Solana wallet (SOL only): tracks native SOL only. Excludes
+                      SPL tokens, NFTs, and staking balances.
+                    </p>
                     <Field.Control
                       ref={field.ref}
                       className={fieldControlClassName}

@@ -53,6 +53,7 @@ describe("normalizeAssetFormValues", () => {
       "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4",
       "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
       "0x396343362be2A4dA1cE0C1C210945346fb82Aa49",
+      "So11111111111111111111111111111111111111112",
     ]) {
       const result = normalizeAssetFormValues({
         ...assetEditDefaultValues,
@@ -68,7 +69,7 @@ describe("normalizeAssetFormValues", () => {
     }
   });
 
-  it("preserves legacy Solana quantity and value for unrelated edits", () => {
+  it("normalizes Solana quantity to one while retaining the submitted USD total", () => {
     const result = normalizeAssetFormValues({
       ...assetEditDefaultValues,
       kind: "wallet",
@@ -79,21 +80,25 @@ describe("normalizeAssetFormValues", () => {
       quantity: "3.5",
       price: "123.45",
     });
-    expect(result.quantity).toBe(3.5);
+    expect(result.quantity).toBe(1);
     expect(result.valueCents).toBe(12345);
   });
 
-  it("rejects malformed wallet addresses in the shared schema", () => {
-    const result = assetFormSchema.safeParse({
-      ...assetEditDefaultValues,
-      kind: "wallet",
-      name: "Wallet",
-      ticker: "WALLET",
-      category: "Crypto",
-      walletAddress: "0xabc",
-    });
-    expect(result.success).toBe(false);
-  });
+  it.each(["", "0xabc", "not-an-address", "0".repeat(44), "S".repeat(45)])(
+    "rejects malformed wallet address %s in the shared schema",
+    (walletAddress) => {
+      const result = assetFormSchema.safeParse({
+        ...assetEditDefaultValues,
+        kind: "wallet",
+        name: "Wallet",
+        ticker: "WALLET",
+        category: "Crypto",
+        walletAddress,
+      });
+      expect(result.success).toBe(false);
+      expect(getWalletAddressError("wallet", walletAddress)).not.toBeNull();
+    },
+  );
 });
 
 describe("getPriceForIdentityChange", () => {
@@ -177,7 +182,7 @@ describe("getPriceForIdentityChange", () => {
 describe("getWalletAddressError", () => {
   const sol = "So11111111111111111111111111111111111111112";
 
-  it("allows new Bitcoin and EVM wallets, including Bitcoin matching legacy Base58", () => {
+  it("allows new Bitcoin and EVM wallets, including Bitcoin matching Solana Base58", () => {
     expect(
       getWalletAddressError("wallet", "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4"),
     ).toBeNull();
@@ -189,25 +194,14 @@ describe("getWalletAddressError", () => {
     ).toBeNull();
   });
 
-  it("allows only unchanged legacy Solana wallets", () => {
-    expect(getWalletAddressError("wallet", sol)).not.toBeNull();
+  it("allows new and changed Solana wallet addresses", () => {
+    expect(getWalletAddressError("wallet", sol)).toBeNull();
+    expect(getWalletAddressError("wallet", ` ${sol} `)).toBeNull();
     expect(
-      getWalletAddressError("wallet", sol, {
-        kind: "crypto",
-        wallet_address: sol,
-      }),
-    ).not.toBeNull();
-    expect(
-      getWalletAddressError("wallet", sol, {
-        kind: "wallet",
-        wallet_address: "So11111111111111111111111111111111111111113",
-      }),
-    ).not.toBeNull();
-    expect(
-      getWalletAddressError("wallet", ` ${sol} `, {
-        kind: "wallet",
-        wallet_address: sol,
-      }),
+      getWalletAddressError(
+        "wallet",
+        "So11111111111111111111111111111111111111113",
+      ),
     ).toBeNull();
   });
 

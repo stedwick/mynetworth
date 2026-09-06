@@ -80,13 +80,7 @@ export async function upsertAssetForUser(
 ): Promise<void> {
   const walletAddress = input.walletAddress?.trim() ?? null;
   const walletError = getWalletAddressError(input.kind, walletAddress);
-  const existing = walletError ? await getAssetForUser(userId, assetId) : null;
-  const validationError = getWalletAddressError(
-    input.kind,
-    walletAddress,
-    existing ?? undefined,
-  );
-  if (validationError) throw new Error(validationError);
+  if (walletError) throw new Error(walletError);
   const categoryId = await resolveCategoryId(userId, input.categoryInput);
   const priceUpdatedAt = getInitialPriceUpdatedAt(input.kind, new Date());
   const stalePriceUpdatedAt = getInitialPriceUpdatedAt("wallet", new Date());
@@ -106,7 +100,7 @@ export async function upsertAssetForUser(
       price_updated_at,
       sort_order
     )
-    SELECT
+    VALUES (
       ${assetId},
       ${userId},
       ${categoryId},
@@ -118,11 +112,6 @@ export async function upsertAssetForUser(
       ${walletAddress},
       ${priceUpdatedAt},
       ${input.sortOrder}
-    WHERE ${!walletError} OR EXISTS (
-      SELECT 1 FROM assets
-      WHERE id = ${assetId} AND user_id = ${userId}
-        AND kind = 'wallet' AND btrim(wallet_address) = ${walletAddress}
-      FOR UPDATE
     )
     ON CONFLICT (id)
     DO UPDATE SET
@@ -130,10 +119,7 @@ export async function upsertAssetForUser(
       name = EXCLUDED.name,
       kind = EXCLUDED.kind,
       ticker_symbol = EXCLUDED.ticker_symbol,
-      quantity = CASE
-        WHEN EXCLUDED.kind = 'wallet' AND ${!!walletError} THEN assets.quantity
-        ELSE EXCLUDED.quantity
-      END,
+      quantity = EXCLUDED.quantity,
       value_cents = CASE
         WHEN EXCLUDED.kind = 'wallet' AND assets.kind = 'wallet'
           AND btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address
@@ -158,13 +144,10 @@ export async function upsertAssetForUser(
         ELSE now()
       END
     WHERE assets.user_id = ${userId}
-      AND (${!walletError} OR (
-        assets.kind = 'wallet' AND btrim(assets.wallet_address) = EXCLUDED.wallet_address
-      ))
     RETURNING id
   `;
   if (rows.length === 0) {
-    throw new Error(walletError ?? "Asset could not be updated.");
+    throw new Error("Asset could not be updated.");
   }
 }
 

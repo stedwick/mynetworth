@@ -34,6 +34,10 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
   mock.module("@/app/api/stocks/price/service", () => ({
     getYahooQuotes: yahoo,
   }));
+  const query = mock(
+    async (_text: string, _params: unknown[]): Promise<unknown[]> => [],
+  );
+  mock.module("@/app/lib/db", () => ({ sql: { query } }));
   const { requestAnkrRpc, requestAnkrBtc } =
     await import("@/app/lib/services/ankr.service");
   const { getWalletBalanceUsd } = await import("./wallet/service");
@@ -41,6 +45,8 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
   const { GET: getWallet } = await import("./wallet/route");
   const { GET: getPrice } = await import("./price/route");
   const { ankrWalletBlockchains } = await import("./wallet/utils");
+  const { refreshAssetPricesForUser } =
+    await import("@/app/lib/services/price-refresh.service");
   const apiKey = "test-secret-key";
   const privateKey = `0x${"ab".repeat(32)}`;
   const ethAddress = "0x396343362be2A4dA1cE0C1C210945346fb82Aa49";
@@ -70,6 +76,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     financeLog.mockClear();
     yahoo.mockReset();
     yahoo.mockRejectedValue(new Error("Missing Yahoo crypto quote"));
+    query.mockReset();
     fetchMock.mockReset();
     fetchMock.mockRejectedValue(new Error("Unexpected provider access"));
   });
@@ -179,6 +186,216 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     ]);
   });
 
+  it("retries SOL getBalance after 429, prices native SOL only, and preserves the response address", async () => {
+    yahoo.mockResolvedValue([
+      {
+        symbol: "SOL-USD",
+        regularMarketPrice: 150,
+        currency: "USD",
+        quoteType: "CRYPTOCURRENCY",
+      },
+    ]);
+    fetchMock.mockResolvedValueOnce(
+      new Response(`${apiKey} ${privateKey} ${solAddress}`, { status: 429 }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      rpcResponse({ context: { slot: 123 }, value: 42_847_305_307 }),
+    );
+    const response = await getWallet(
+      new Request(`https://example.test?address=%20${solAddress}%20`),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ [solAddress]: 42.847305307 * 150 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [url, init] of fetchMock.mock.calls) {
+      expect(url).toBe(`https://rpc.ankr.com/solana/${apiKey}`);
+      expect(init).toMatchObject({
+        method: "POST",
+        cache: "no-store",
+        redirect: "error",
+        headers: { "Content-Type": "application/json" },
+      });
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      expect(JSON.parse(String(init?.body))).toEqual({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getBalance",
+        params: [solAddress, { commitment: "finalized" }],
+      });
+    }
+    expect(yahoo.mock.calls).toEqual([[["SOL-USD"], "crypto"]]);
+    expect(financeLog.mock.calls).toEqual([
+      [
+        "success",
+        "Using Ankr balance and Yahoo pricing, SOL wallet So1111...1112 has a USD balance of $6,427.10 (SOL only).",
+      ],
+    ]);
+  });
+
+  it("accepts numeric zero lamports without Yahoo pricing or extra account queries", async () => {
+    fetchMock.mockResolvedValue(
+      rpcResponse({ context: { slot: 123 }, value: 0 }),
+    );
+    const response = await getWallet(
+      new Request(`https://example.test?address=${solAddress}`),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ [solAddress]: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(yahoo).not.toHaveBeenCalled();
+    expect(financeLog.mock.calls).toEqual([
+      [
+        "success",
+        "Using Ankr API, SOL wallet So1111...1112 has a USD balance of $0.00 (SOL only).",
+      ],
+    ]);
+  });
+
+  it.each([
+    { result: { context: { slot: 123 }, value: "0" } },
+    { result: { context: { slot: 123 }, value: -1 } },
+    { result: { context: { slot: 123 }, value: 1.5 } },
+    { result: { context: { slot: 123 }, value: Number.MAX_SAFE_INTEGER + 1 } },
+    { result: { context: { slot: 123 } } },
+    {},
+    {
+      error: {
+        code: -32602,
+        message: `${apiKey} ${privateKey} ${solAddress} https://rpc.ankr.com/${apiKey}`,
+      },
+    },
+  ])(
+    "rejects malformed SOL/RPC results without pricing: %p",
+    async (payload) => {
+      fetchMock.mockResolvedValue(
+        Response.json({ jsonrpc: "2.0", id: 1, ...payload }),
+      );
+      const response = await getWallet(
+        new Request(`https://example.test?address=${solAddress}`),
+      );
+      expect(response.status).toBe(502);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(await response.json()).toEqual({
+        error: "Wallet balance request failed",
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(yahoo).not.toHaveBeenCalled();
+      expect(financeLog.mock.calls).toEqual([
+        [
+          "error",
+          "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only); its saved balance is unchanged.",
+        ],
+      ]);
+      const stored = {
+        kind: "wallet",
+        ticker_symbol: "WALLET",
+        wallet_address: solAddress,
+        quantity: "7",
+        value_cents: "98765",
+        price_updated_at: new Date("2025-02-03"),
+        updated_at: new Date("2025-02-03"),
+        refresh_started_at: "2026-03-04T05:06:07.000Z",
+        refresh_due: true,
+      };
+      const old = structuredClone(stored);
+      query.mockResolvedValue([stored]);
+      fetchMock.mockResolvedValue(
+        Response.json({ jsonrpc: "2.0", id: 1, ...payload }),
+      );
+      expect(await refreshAssetPricesForUser("sol-test-user")).toEqual({
+        updated: 0,
+        failed: 1,
+        skipped: 0,
+      });
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0].trimStart()).toStartWith("SELECT");
+      expect(stored).toEqual(old);
+      expect(yahoo).not.toHaveBeenCalled();
+    },
+  );
+
+  it("logs one abbreviated SOL failure after exhausted retries without leaking provider details", async () => {
+    fetchMock.mockImplementation(async () => {
+      expect(financeLog).not.toHaveBeenCalled();
+      return new Response(
+        `${apiKey} ${privateKey} ${solAddress} https://rpc.ankr.com/${apiKey}`,
+        { status: 503, statusText: apiKey },
+      );
+    });
+    await expect(getWalletBalanceUsd(solAddress, apiKey)).rejects.toThrow(
+      "Ankr HTTP request failed (503)",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(yahoo).not.toHaveBeenCalled();
+    expect(financeLog.mock.calls).toEqual([
+      [
+        "error",
+        "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only); its saved balance is unchanged.",
+      ],
+    ]);
+  });
+
+  it.each([
+    "reject",
+    "missing-quote",
+    undefined,
+    0,
+    NaN,
+    -1,
+    Infinity,
+    Number.MAX_SAFE_INTEGER,
+  ] as const)(
+    "does not save SOL values or timestamps when Yahoo pricing fails (%p)",
+    async (price) => {
+      const stored = {
+        kind: "wallet",
+        ticker_symbol: "WALLET",
+        wallet_address: solAddress,
+        quantity: "7",
+        value_cents: "98765",
+        price_updated_at: new Date("2025-02-03"),
+        updated_at: new Date("2025-02-03"),
+        refresh_started_at: "2026-03-04T05:06:07.000Z",
+        refresh_due: true,
+      };
+      const old = structuredClone(stored);
+      query.mockImplementation(async (text) => {
+        if (text.trimStart().startsWith("SELECT")) return [stored];
+        throw new Error("Unexpected database write");
+      });
+      fetchMock.mockImplementation(async () =>
+        rpcResponse({ context: { slot: 123 }, value: 42_847_305_307 }),
+      );
+      if (price === "reject")
+        yahoo.mockRejectedValue(
+          new Error(
+            `${apiKey} ${privateKey} ${solAddress} https://example.test/private`,
+          ),
+        );
+      else
+        yahoo.mockResolvedValue(
+          price === "missing-quote"
+            ? []
+            : [{ symbol: "SOL-USD", regularMarketPrice: price }],
+        );
+      expect(await refreshAssetPricesForUser("sol-test-user")).toEqual({
+        updated: 0,
+        failed: 1,
+        skipped: 0,
+      });
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(stored).toEqual(old);
+      expect(yahoo.mock.calls).toEqual([[["SOL-USD"], "crypto"]]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(financeLog.mock.calls).toEqual([
+        [
+          "error",
+          "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only); its saved balance is unchanged.",
+        ],
+      ]);
+    },
+  );
+
   it("prices native ETH, canonical USDC, and BTC with normalized symbol keys", async () => {
     fetchMock.mockImplementation(async (url, init) => {
       if (String(url).includes("btc_blockbook")) {
@@ -221,7 +438,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
         "Invalid crypto symbol",
       );
     }
-    await expect(getWalletBalanceUsd(solAddress, apiKey)).rejects.toThrow(
+    await expect(getWalletBalanceUsd("invalid-format", apiKey)).rejects.toThrow(
       "Unsupported wallet address",
     );
     expect(await getCryptoPrices([], apiKey)).toEqual({});
@@ -509,7 +726,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     expect(
       (
         await getWallet(
-          new Request(`https://example.test?address=${solAddress}`),
+          new Request("https://example.test?address=invalid-format"),
         )
       ).status,
     ).toBe(400);
@@ -525,6 +742,13 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     );
     expect(
       (await getPrice(new Request("https://example.test?symbols=ETH"))).status,
+    ).toBe(500);
+    expect(
+      (
+        await getWallet(
+          new Request(`https://example.test?address=${solAddress}`),
+        )
+      ).status,
     ).toBe(500);
     expect(
       (
@@ -559,7 +783,9 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     );
     expect(response.status).toBe(502);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(await response.json()).toEqual({ error: "Ankr request failed" });
+    expect(await response.json()).toEqual({
+      error: "Wallet balance request failed",
+    });
     const price = await getPrice(
       new Request("https://example.test?symbols=USDC"),
     );

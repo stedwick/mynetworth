@@ -92,7 +92,7 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
     if (supported && asset.refresh_due) continue;
     const label =
       asset.kind === "wallet"
-        ? `${isBtcAddress(address) ? "BTC" : isEthAddress(address) ? "ETH/EVM" : isSolAddress(address) ? "SOL" : "unsupported"} wallet ${abbreviateWalletAddress(address)}`
+        ? `${isBtcAddress(address) ? "BTC" : isEthAddress(address) ? "ETH/EVM" : isSolAddress(address) ? "SOL" : "unsupported"} wallet ${abbreviateWalletAddress(address)}${!isBtcAddress(address) && isSolAddress(address) ? " (SOL only)" : ""}`
         : `${asset.ticker_symbol.trim().toUpperCase()} ${asset.kind === "stock" ? "stock" : "crypto"} price`;
     logFinance(
       "skip",

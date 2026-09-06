@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { usdAmountSchema } from "../ankr-utils";
 
-// TODO: Solana, Sonic, and Monad are intentionally excluded pending Ankr support.
+// Solana uses its native RPC separately. Sonic and Monad remain excluded.
 export const ankrWalletBlockchains = [
   "arbitrum",
   "avalanche",
@@ -104,6 +104,17 @@ export const parseAnkrBtcBalanceUsd = (payload: unknown): number => {
   throw new Error("Missing or zero Ankr BTC valuation for a nonzero balance");
 };
 
+const solBalanceSchema = z.object({
+  context: z.object({ slot: z.number().int().nonnegative() }),
+  value: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+});
+
+export const parseAnkrSolBalance = (payload: unknown): number => {
+  const parsed = solBalanceSchema.safeParse(payload);
+  if (!parsed.success) throw new Error("Invalid Ankr SOL balance");
+  return parsed.data.value / 1_000_000_000;
+};
+
 export const parseAddressParam = (param: string | null): string | null => {
   if (!param) return null;
   const trimmed = param.trim();
@@ -123,12 +134,11 @@ export const isEthAddress = (address: string): boolean =>
 export const isBtcAddress = (address: string): boolean =>
   btcAddressSchema.safeParse(address).success;
 
-// Retained for identifying legacy assets in the UI, not for provider requests.
 export const isSolAddress = (address: string): boolean =>
   solAddressSchema.safeParse(address).success;
 
 export const isSupportedWalletAddress = (address: string): boolean =>
-  isBtcAddress(address) || isEthAddress(address);
+  isBtcAddress(address) || isEthAddress(address) || isSolAddress(address);
 
 export const abbreviateWalletAddress = (address: string): string =>
   address.length > 10

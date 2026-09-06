@@ -35,16 +35,12 @@ export async function updateAsset(
   }
 
   const existing = await getAssetForUser(data.user.id, assetId);
-
-  if (!existing) {
-    return { error: "Asset not found." };
-  }
+  if (!existing) return { error: "Asset not found." };
 
   const normalized = normalizeAssetFormValues(parsed.data);
   const walletError = getWalletAddressError(
     normalized.kind,
     normalized.walletAddress,
-    existing,
   );
   if (walletError) return { error: walletError };
 

@@ -8,6 +8,7 @@ import {
   mapWalletBalanceToResponse,
   parseAddressParam,
   parseAnkrBtcBalanceUsd,
+  parseAnkrSolBalance,
   parseAnkrWalletBalanceUsd,
 } from "./utils";
 
@@ -32,7 +33,7 @@ describe("wallet address contracts", () => {
     expect(parseAddressParam(null)).toBeNull();
   });
 
-  it("supports BTC and EVM while retaining legacy Solana detection", () => {
+  it("supports BTC, EVM, and the existing Solana address format", () => {
     const eth = "0x396343362be2A4dA1cE0C1C210945346fb82Aa49";
     const sol = "So11111111111111111111111111111111111111112";
     expect(isEthAddress(eth)).toBe(true);
@@ -45,7 +46,8 @@ describe("wallet address contracts", () => {
       expect(isSupportedWalletAddress(btc)).toBe(true);
     }
     expect(isSolAddress(sol)).toBe(true);
-    expect(isSupportedWalletAddress(sol)).toBe(false);
+    expect(isSupportedWalletAddress(sol)).toBe(true);
+    expect(isSolAddress("1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4")).toBe(true);
     expect(isSolAddress(eth)).toBe(false);
     expect(isEthAddress("0x123")).toBe(false);
     expect(isBtcAddress("bc1")).toBe(false);
@@ -164,6 +166,51 @@ describe("parseAnkrWalletBalanceUsd", () => {
         assets: [{ balanceUsd: "1" }],
       }),
     ).toThrow("Inconsistent");
+  });
+});
+
+describe("parseAnkrSolBalance", () => {
+  it("converts native lamports to SOL without losing nine decimal places", () => {
+    for (const [value, sol] of [
+      [0, 0],
+      [1, 0.000000001],
+      [42_847_305_307, 42.847305307],
+      [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER / 1e9],
+    ]) {
+      expect(parseAnkrSolBalance({ context: { slot: 123 }, value })).toBe(sol);
+    }
+  });
+
+  it.each([
+    undefined,
+    null,
+    "0",
+    "1000000000",
+    -1,
+    1.5,
+    NaN,
+    Infinity,
+    Number.MAX_SAFE_INTEGER + 1,
+    true,
+  ])("rejects malformed or unsafe lamports: %p", (value) => {
+    expect(() =>
+      parseAnkrSolBalance({ context: { slot: 123 }, value }),
+    ).toThrow("Invalid Ankr SOL balance");
+  });
+
+  it.each([
+    undefined,
+    null,
+    {},
+    { value: 0 },
+    { context: {}, value: 0 },
+    { context: { slot: -1 }, value: 0 },
+    { context: { slot: "123" }, value: 0 },
+    { context: { slot: 1.5 }, value: 0 },
+  ])("rejects missing or malformed RPC results: %p", (payload) => {
+    expect(() => parseAnkrSolBalance(payload)).toThrow(
+      "Invalid Ankr SOL balance",
+    );
   });
 });
 
