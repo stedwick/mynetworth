@@ -1,4 +1,5 @@
-import { parseSearchQueryParam, searchCryptoAssets } from "./utils";
+import { searchCryptoAssets } from "@/app/lib/services/crypto-search.service";
+import { parseSearchQueryParam } from "./utils";
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
@@ -9,10 +10,17 @@ export async function GET(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  return Response.json(searchCryptoAssets(query), {
-    headers: {
-      "Cache-Control":
-        "public, max-age=86400, s-maxage=86400, stale-while-revalidate=60",
-    },
-  });
+  try {
+    return Response.json(await searchCryptoAssets(query), {
+      headers: {
+        "Cache-Control":
+          "public, max-age=86400, s-maxage=86400, stale-while-revalidate=60",
+      },
+    });
+  } catch {
+    return Response.json(
+      { error: "Yahoo Finance crypto search failed" },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

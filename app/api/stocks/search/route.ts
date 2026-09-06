@@ -1,32 +1,9 @@
-import { cacheLife } from "next/cache";
+import { getYahooSearchResults } from "@/app/lib/services/yahoo-search.service";
 import {
   mapYahooSearchQuotesToMatches,
   orderYahooSearchMatches,
   parseSearchQueryParam,
-  parseYahooSearchResponse,
 } from "./utils";
-
-const YAHOO_SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
-
-const getCachedYahooSearchResults = async (query: string) => {
-  "use cache";
-  cacheLife("days");
-
-  const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
-  const response = await fetch(url, {
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error("Yahoo search request failed");
-  }
-
-  const data = parseYahooSearchResponse(await response.json());
-  return orderYahooSearchMatches(
-    mapYahooSearchQuotesToMatches(data.quotes ?? []),
-    query,
-  );
-};
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
@@ -40,7 +17,10 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const matches = await getCachedYahooSearchResults(query);
+    const matches = orderYahooSearchMatches(
+      mapYahooSearchQuotesToMatches(await getYahooSearchResults(query)),
+      query,
+    );
 
     return Response.json(matches, {
       headers: {

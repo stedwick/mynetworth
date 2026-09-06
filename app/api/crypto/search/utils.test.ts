@@ -5,8 +5,11 @@ import {
   isValidCryptoSymbol,
   usesAnkrCryptoPrice,
 } from "@/app/lib/crypto-assets";
-import { GET } from "./route";
-import { parseSearchQueryParam, searchCryptoAssets } from "./utils";
+import {
+  getCryptoSearchQueries,
+  mapYahooCryptoSearchResults,
+  parseSearchQueryParam,
+} from "./utils";
 
 describe("canonical crypto catalog", () => {
   it("contains unique canonical identities and excludes disabled chains", () => {
@@ -101,51 +104,111 @@ describe("crypto search", () => {
     expect(parseSearchQueryParam("  btc ")).toBe("btc");
   });
 
-  it("matches symbols and names with exact matches first, then limits", () => {
-    expect(searchCryptoAssets(" btc ")).toEqual([
-      { symbol: "BTC", name: "Bitcoin" },
-      { symbol: "WBTC", name: "Wrapped Bitcoin" },
-    ]);
-    expect(searchCryptoAssets("bitcoin", 1)).toEqual([
-      { symbol: "BTC", name: "Bitcoin" },
-    ]);
-    expect(searchCryptoAssets("wbtc", 1)).toEqual([
-      { symbol: "WBTC", name: "Wrapped Bitcoin" },
-    ]);
-    expect(searchCryptoAssets("eth")[0]).toEqual({
-      symbol: "ETH",
-      name: "Ethereum",
-    });
-    expect(searchCryptoAssets("btc", 0)).toEqual([]);
-    expect(searchCryptoAssets(" ")).toEqual([]);
+  it.each([
+    [" near ", ["near", "NEAR-USD"]],
+    [" NEAR-USD ", ["NEAR-USD"]],
+    ["sui20947-usd", ["sui20947-usd"]],
+    [" NEAR Protocol ", ["NEAR Protocol"]],
+    ["Wrapped Bitcoin", ["Wrapped Bitcoin"]],
+  ] as const)("plans provider queries for %s", (query, expected) => {
+    expect(getCryptoSearchQueries(query)).toEqual([...expected]);
   });
 
-  it("cannot introduce provider catalog duplicates or disabled tokens", () => {
-    for (const query of ["sonic", "monad", "fraudulent bitcoin"])
-      expect(searchCryptoAssets(query)).toEqual([]);
-    expect(
-      searchCryptoAssets("eth").filter(({ symbol }) => symbol === "ETH"),
-    ).toHaveLength(1);
-    for (const match of searchCryptoAssets("a"))
-      expect(Object.keys(match).sort()).toEqual(["name", "symbol"]);
+  const cryptoQuote = (symbol: string, longname?: string) => ({
+    symbol,
+    longname,
+    quoteType: "CRYPTOCURRENCY",
+    isYahooFinance: true,
+    currency: "USD",
   });
 
-  it("serves the public search contract without credentials or provider access", async () => {
-    const response = await GET(
-      new Request("https://example.test/api/crypto/search?q=usdc"),
+  it("puts the supplemental exact pair first and preserves other provider ordering", () => {
+    const quotes = [
+      cryptoQuote("ZNEAR-USD", "Other USD"),
+      cryptoQuote("ANEAR-USD", "Another USD"),
+      cryptoQuote(" near-usd ", "NEAR Protocol USD"),
+      cryptoQuote("NEAR-USD", "Duplicate USD"),
+    ];
+    for (const query of [" near ", "near-usd"]) {
+      expect(mapYahooCryptoSearchResults(quotes, query)).toEqual([
+        { symbol: "NEAR-USD", name: "NEAR Protocol" },
+        { symbol: "ZNEAR-USD", name: "Other" },
+        { symbol: "ANEAR-USD", name: "Another" },
+      ]);
+    }
+  });
+
+  it("retains exact Yahoo identities rather than selecting canonical Ankr assets", () => {
+    const matches = mapYahooCryptoSearchResults(
+      [
+        cryptoQuote("SUI20947-USD", "Sui USD"),
+        cryptoQuote("BTC-USD", "Bitcoin USD"),
+      ],
+      "Sui",
     );
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual([
-      { symbol: "USDC", name: "USD Coin" },
+    expect(matches).toEqual([
+      { symbol: "SUI20947-USD", name: "Sui" },
+      { symbol: "BTC-USD", name: "Bitcoin" },
     ]);
+    for (const { symbol } of matches) {
+      expect(getCryptoAsset(symbol)).toEqual({
+        symbol,
+        name: symbol,
+        blockchain: "yahoo",
+        yahooSymbol: symbol,
+      });
+      expect(usesAnkrCryptoPrice(symbol)).toBe(false);
+    }
+    expect(getCryptoAsset("BTC")?.blockchain).toBe("btc");
+  });
+
+  it("filters mixed, malformed and duplicate quotes before limiting", () => {
     expect(
-      (await GET(new Request("https://example.test/api/crypto/search?q=s")))
-        .status,
-    ).toBe(400);
-    expect(
-      await (
-        await GET(new Request("https://example.test/api/crypto/search?q=sol"))
-      ).json(),
-    ).toEqual([{ symbol: "SOL", name: "Solana" }]);
+      mapYahooCryptoSearchResults(
+        [
+          { ...cryptoQuote("STOCK-USD"), quoteType: "EQUITY" },
+          cryptoQuote("BTC-EUR"),
+          { ...cryptoQuote("EUR-USD"), currency: "EUR" },
+          { ...cryptoQuote("TYPE-USD"), quoteType: undefined },
+          { ...cryptoQuote("FALSE-USD"), isYahooFinance: false },
+          { ...cryptoQuote("MISSING-USD"), isYahooFinance: undefined },
+          ...["", "BTC", "A/B-USD", "A\nB-USD", `${"A".repeat(29)}-USD`].map(
+            (symbol) => cryptoQuote(symbol),
+          ),
+          {
+            ...cryptoQuote(" btc-usd ", "Bitcoin USD"),
+            shortname: "Short USD",
+          },
+          cryptoQuote("BTC-USD", "Duplicate USD"),
+          {
+            ...cryptoQuote("SOL-USD"),
+            currency: undefined,
+            shortname: "Solana USD",
+          },
+          cryptoQuote("SUI20947-USD"),
+        ],
+        "coin",
+        3,
+      ),
+    ).toEqual([
+      { symbol: "BTC-USD", name: "Bitcoin" },
+      { symbol: "SOL-USD", name: "Solana" },
+      { symbol: "SUI20947-USD", name: undefined },
+    ]);
+  });
+
+  it("applies default and explicit limits after exact ranking", () => {
+    const quotes = Array.from({ length: 25 }, (_, index) =>
+      cryptoQuote(`COIN${index}-USD`),
+    );
+    expect(mapYahooCryptoSearchResults(quotes, "coin24")).toHaveLength(20);
+    expect(mapYahooCryptoSearchResults(quotes, "coin24", 1)).toEqual([
+      { symbol: "COIN24-USD", name: undefined },
+    ]);
+    expect(mapYahooCryptoSearchResults(quotes, "coin24", 100)).toHaveLength(25);
+    for (const limit of [0, -1])
+      expect(mapYahooCryptoSearchResults(quotes, "coin24", limit)).toEqual([]);
+    expect(mapYahooCryptoSearchResults(quotes, " ")).toEqual([]);
+    expect(mapYahooCryptoSearchResults([], "coin")).toEqual([]);
   });
 });

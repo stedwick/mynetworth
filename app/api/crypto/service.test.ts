@@ -457,6 +457,8 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     ["UNMAPPED", 2.5],
     ["ABC.X", 4],
     ["SOL-USD", 150],
+    ["SUI20947-USD", 0.8],
+    ["BTC-USD", 100_000],
   ] as const)(
     "prices %s through Yahoo without Ankr credentials or a crypto cache",
     async (symbol, price) => {
