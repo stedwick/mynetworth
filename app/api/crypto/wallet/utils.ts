@@ -130,6 +130,11 @@ export const isSolAddress = (address: string): boolean =>
 export const isSupportedWalletAddress = (address: string): boolean =>
   isBtcAddress(address) || isEthAddress(address);
 
+export const abbreviateWalletAddress = (address: string): string =>
+  address.length > 10
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : "(invalid address)";
+
 export const mapWalletBalanceToResponse = (
   address: string,
   totalBalanceUsd: number,

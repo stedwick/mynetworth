@@ -36,9 +36,13 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     | "value_cents"
     | "price_updated_at"
     | "updated_at"
-  > & { refresh_started_at: string };
+  > & { refresh_started_at: string; refresh_due: boolean };
   const startedAt = "2026-03-04T05:06:07.000Z";
-  const asset = (kind: string, identity: string): Asset => ({
+  const asset = (
+    kind: string,
+    identity: string,
+    refresh_due = true,
+  ): Asset => ({
     kind,
     ticker_symbol: kind === "wallet" ? "WALLET" : identity,
     wallet_address: kind === "wallet" ? identity : null,
@@ -47,6 +51,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     price_updated_at: new Date("2025-02-03T00:00:00Z"),
     updated_at: new Date("2025-02-03T00:00:00Z"),
     refresh_started_at: startedAt,
+    refresh_due,
   });
   const compact = (text: string) => text.replace(/\s+/g, " ").trim();
   let rows: Asset[] = [];
@@ -63,7 +68,11 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     async (_address: string, _key: string): Promise<number> => 0,
   );
   const yahoo = mock(async (_symbols: string[]): Promise<YahooQuote[]> => []);
+  const logFinance = mock<typeof import("@/app/lib/finance-log").logFinance>(
+    (_event, _message) => {},
+  );
   mock.module("server-only", () => ({}));
+  mock.module("@/app/lib/finance-log", () => ({ logFinance }));
   mock.module("@/app/lib/db", () => ({ sql: { query } }));
   mock.module("@/app/api/crypto/price/service", () => ({
     getCryptoPrices: crypto,
@@ -91,23 +100,48 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     rows = [];
     process.env.ANKR_API_KEY = key;
     delete process.env.PRICE_REFRESH_SECONDS;
+    logFinance.mockClear();
     query.mockReset();
     query.mockImplementation(async (text) => {
-      if (
-        compact(text).startsWith(
-          "SELECT *, now() AS refresh_started_at FROM assets",
-        )
-      )
+      if (compact(text).startsWith("SELECT *, now() AS refresh_started_at,"))
         return rows;
       if (compact(text).startsWith("UPDATE assets AS a")) return [];
       throw new Error(`Unexpected SQL: ${text}`);
     });
     for (const provider of [crypto, wallet, yahoo]) {
       provider.mockReset();
-      provider.mockRejectedValue(new Error("Provider unavailable"));
+      provider.mockRejectedValue(
+        new Error(
+          `Provider unavailable:\n\u001b[31mhttps://rpc.ankr.com/eth/${key}?address=${btc}&user=user-a`,
+        ),
+      );
     }
   });
-  afterEach(() => expect(network).not.toHaveBeenCalled());
+  afterEach(() => {
+    expect(network).not.toHaveBeenCalled();
+    for (const call of logFinance.mock.calls) {
+      expect(call).toHaveLength(2);
+      expect(["skip", "error"]).toContain(call[0]);
+      expect(typeof call[1]).toBe("string");
+    }
+    const logged = Bun.inspect(logFinance.mock.calls, {
+      depth: Infinity,
+    }).toLowerCase();
+    for (const privateValue of [
+      key,
+      evm,
+      btc,
+      otherBtc,
+      sol,
+      "user-a",
+      "user-b",
+      "user-gated",
+      "https://rpc.ankr.com",
+      "Provider unavailable",
+    ]) {
+      expect(logged).not.toContain(privateValue.toLowerCase());
+    }
+  });
   afterAll(() => network.mockRestore());
 
   it("deduplicates normalized symbols/EVM wallets but preserves Base58 case and counts asset rows", async () => {
@@ -160,9 +194,10 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       ],
     ]);
     expect(query).toHaveBeenCalledTimes(4);
+    expect(logFinance).not.toHaveBeenCalled();
   });
 
-  it("silently skips unsupported-only holdings without credentials, providers, or writes", async () => {
+  it("logs and skips unsupported-only holdings without credentials, providers, or writes", async () => {
     delete process.env.ANKR_API_KEY;
     rows = [
       ...[" sol ", "S", "MON", "UNKNOWN", ""].map((symbol) =>
@@ -182,7 +217,135 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     expect(query).toHaveBeenCalledTimes(1);
     expect(writes()).toEqual([]);
     expect(rows).toEqual(old);
+    expect(logFinance.mock.calls).toEqual(
+      [
+        "SOL crypto price",
+        "S crypto price",
+        "MON crypto price",
+        "UNKNOWN crypto price",
+        " crypto price",
+        "SOL wallet So1111...1112",
+        "unsupported wallet (invalid address)",
+        "unsupported wallet (invalid address)",
+      ].map((label) => [
+        "skip",
+        `Skipping ${label}: automatic pricing is not supported; keeping its saved value.`,
+      ]),
+    );
   });
+
+  it("classifies all stored rows but only refreshes stale supported assets and counts stale rows", async () => {
+    rows = [
+      asset("stock", "MSFT", false),
+      asset("stock", "AAPL"),
+      asset("stock", " aapl "),
+      asset("crypto", "BTC", false),
+      asset("crypto", "ETH"),
+      asset("crypto", " eth "),
+      asset("crypto", "SOL"),
+      asset("crypto", "MON", false),
+      asset("wallet", evm, false),
+      asset("wallet", btc),
+      asset("wallet", ` ${btc} `),
+      asset("wallet", sol),
+      asset("wallet", "invalid", false),
+    ];
+    const old = structuredClone(rows);
+    yahoo.mockResolvedValue([{ symbol: "AAPL", regularMarketPrice: 12 }]);
+    crypto.mockResolvedValue({ ETH: 42 });
+    wallet.mockResolvedValue(10);
+    expect(await refresh("user-a")).toEqual({
+      updated: 6,
+      failed: 0,
+      skipped: 2,
+    });
+    expect(logFinance.mock.calls).toEqual([
+      [
+        "skip",
+        "Skipping MSFT stock price: its saved price is still fresh (refresh interval: 3600 seconds).",
+      ],
+      [
+        "skip",
+        "Skipping BTC crypto price: its saved price is still fresh (refresh interval: 3600 seconds).",
+      ],
+      [
+        "skip",
+        "Skipping SOL crypto price: automatic pricing is not supported; keeping its saved value.",
+      ],
+      [
+        "skip",
+        "Skipping MON crypto price: automatic pricing is not supported; keeping its saved value.",
+      ],
+      [
+        "skip",
+        "Skipping ETH/EVM wallet 0x3963...Aa49: its saved price is still fresh (refresh interval: 3600 seconds).",
+      ],
+      [
+        "skip",
+        "Skipping SOL wallet So1111...1112: automatic pricing is not supported; keeping its saved value.",
+      ],
+      [
+        "skip",
+        "Skipping unsupported wallet (invalid address): automatic pricing is not supported; keeping its saved value.",
+      ],
+    ]);
+    expect(yahoo.mock.calls).toEqual([[["AAPL"]]]);
+    expect(crypto.mock.calls).toEqual([[["ETH"], key]]);
+    expect(wallet.mock.calls).toEqual([[btc, key]]);
+    expect(writes().map(([, params]) => params)).toEqual([
+      ["AAPL", 1200, "stock", startedAt],
+      ["ETH", 4200, "crypto", startedAt],
+      [btc, 1000, "wallet", startedAt],
+    ]);
+    expect(rows).toEqual(old);
+  });
+
+  it.each([3600, 90])(
+    "logs fresh-only holdings at a %p-second interval without credentials or providers",
+    async (seconds) => {
+      delete process.env.ANKR_API_KEY;
+      process.env.PRICE_REFRESH_SECONDS = String(seconds);
+      rows = [
+        asset("stock", "AAPL", false),
+        asset("crypto", "ETH", false),
+        asset("crypto", "SOL", false),
+        asset("wallet", btc, false),
+        asset("wallet", sol, false),
+      ];
+      expect(await refresh("user-a")).toEqual({
+        updated: 0,
+        failed: 0,
+        skipped: 0,
+      });
+      expect(logFinance.mock.calls).toEqual([
+        [
+          "skip",
+          `Skipping AAPL stock price: its saved price is still fresh (refresh interval: ${seconds} seconds).`,
+        ],
+        [
+          "skip",
+          `Skipping ETH crypto price: its saved price is still fresh (refresh interval: ${seconds} seconds).`,
+        ],
+        [
+          "skip",
+          "Skipping SOL crypto price: automatic pricing is not supported; keeping its saved value.",
+        ],
+        [
+          "skip",
+          `Skipping BTC wallet 1PuJjn...kkL4: its saved price is still fresh (refresh interval: ${seconds} seconds).`,
+        ],
+        [
+          "skip",
+          "Skipping SOL wallet So1111...1112: automatic pricing is not supported; keeping its saved value.",
+        ],
+      ]);
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(writes()).toEqual([]);
+      expect(crypto).not.toHaveBeenCalled();
+      expect(wallet).not.toHaveBeenCalled();
+      expect(yahoo).not.toHaveBeenCalled();
+    },
+  );
 
   it("retains mixed successes, counts duplicate failures, and excludes unsupported rows from failures", async () => {
     rows = [
@@ -195,11 +358,11 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       ...["GOOD", "good", "BAD", "bad"].map((symbol) => asset("stock", symbol)),
     ];
     crypto.mockImplementation(async ([symbol]) => {
-      if (symbol === "BTC") throw new Error("Quote failed");
+      if (symbol === "BTC") throw new Error(`Quote failed: ${key}`);
       return { ETH: 42 };
     });
     wallet.mockImplementation(async (address) => {
-      if (address === btc) throw new Error("Wallet failed");
+      if (address === btc) throw new Error(`Wallet failed: ${key} ${address}`);
       return 10;
     });
     yahoo.mockResolvedValue([{ symbol: "GOOD", regularMarketPrice: 5 }]);
@@ -222,6 +385,19 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       [evm.toLowerCase(), 1000, "wallet", startedAt],
     ]);
     expect(query).toHaveBeenCalledTimes(4);
+    expect(logFinance.mock.calls).toEqual(
+      [
+        "SOL crypto price",
+        "S crypto price",
+        "MON crypto price",
+        "UNKNOWN crypto price",
+        "SOL wallet So1111...1112",
+        "unsupported wallet (invalid address)",
+      ].map((label) => [
+        "skip",
+        `Skipping ${label}: automatic pricing is not supported; keeping its saved value.`,
+      ]),
+    );
   });
 
   it.each(["reject", undefined, NaN, Infinity, -1, Number.MAX_SAFE_INTEGER])(
@@ -247,6 +423,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       expect(query).toHaveBeenCalledTimes(1);
       expect(writes()).toEqual([]);
       expect(rows).toEqual(old);
+      expect(logFinance).not.toHaveBeenCalled();
     },
   );
 
@@ -264,6 +441,10 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       expect(crypto).not.toHaveBeenCalled();
       expect(wallet).not.toHaveBeenCalled();
       expect(yahoo).not.toHaveBeenCalled();
+      expect(logFinance.mock.calls).toEqual([
+        ["error", "Cannot refresh crypto: ANKR_API_KEY is not configured."],
+        ["error", "Cannot refresh crypto: ANKR_API_KEY is not configured."],
+      ]);
     },
   );
 
@@ -285,16 +466,18 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
         query.mock.calls.map(([text, params]) => [compact(text), params]),
       ).toEqual([
         [
-          "SELECT *, now() AS refresh_started_at FROM assets WHERE user_id = $1 AND kind <> 'manual'" +
+          "SELECT *, now() AS refresh_started_at, " +
             (seconds
-              ? " AND price_updated_at < now() - ($2::double precision * interval '1 second')"
-              : ""),
+              ? "price_updated_at < now() - ($2::double precision * interval '1 second')"
+              : "true") +
+            " AS refresh_due FROM assets WHERE user_id = $1 AND kind <> 'manual'",
           seconds ? ["user-gated", seconds] : ["user-gated"],
         ],
       ]);
       expect(crypto).not.toHaveBeenCalled();
       expect(wallet).not.toHaveBeenCalled();
       expect(yahoo).not.toHaveBeenCalled();
+      expect(logFinance).not.toHaveBeenCalled();
     },
   );
 
@@ -323,6 +506,44 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     await refresh("user-a");
     expect(crypto).toHaveBeenCalledTimes(3);
     expect(writes()).toHaveLength(3);
+    expect(logFinance).not.toHaveBeenCalled();
+  });
+
+  it("logs each stored skipped row once, including repeated identities, without replaying logs for an inflight call", async () => {
+    delete process.env.ANKR_API_KEY;
+    rows = [
+      asset("wallet", evm, false),
+      asset("wallet", ` ${evm} `, false),
+      asset("wallet", sol),
+      asset("wallet", sol, false),
+    ];
+    const old = structuredClone(rows);
+    const first = refresh("user-a");
+    const second = refresh("user-a");
+    expect(second).toBe(first);
+    expect(await first).toEqual({ updated: 0, failed: 0, skipped: 1 });
+    expect(logFinance.mock.calls).toEqual([
+      ...Array.from(
+        { length: 2 },
+        (): Parameters<typeof logFinance> => [
+          "skip",
+          "Skipping ETH/EVM wallet 0x3963...Aa49: its saved price is still fresh (refresh interval: 3600 seconds).",
+        ],
+      ),
+      ...Array.from(
+        { length: 2 },
+        (): Parameters<typeof logFinance> => [
+          "skip",
+          "Skipping SOL wallet So1111...1112: automatic pricing is not supported; keeping its saved value.",
+        ],
+      ),
+    ]);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(writes()).toEqual([]);
+    expect(rows).toEqual(old);
+    expect(crypto).not.toHaveBeenCalled();
+    expect(wallet).not.toHaveBeenCalled();
+    expect(yahoo).not.toHaveBeenCalled();
   });
 
   it("preserves 50-symbol stock batches and successes across a rejected batch and missing quote", async () => {
@@ -364,6 +585,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     expect(crypto).not.toHaveBeenCalled();
     expect(wallet).not.toHaveBeenCalled();
     expect(query).toHaveBeenCalledTimes(2);
+    expect(logFinance).not.toHaveBeenCalled();
   });
 
   it("keeps newer DB-timed prices and manual edits when overlapping refreshes finish in reverse order", async () => {
@@ -378,11 +600,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     let selects = 0;
     let requests = 0;
     query.mockImplementation(async (text, params) => {
-      if (
-        compact(text).startsWith(
-          "SELECT *, now() AS refresh_started_at FROM assets",
-        )
-      ) {
+      if (compact(text).startsWith("SELECT *, now() AS refresh_started_at,")) {
         const refresh_started_at = [startedAt, newerStartedAt][selects++];
         return stored
           .filter((row) => row.user_id === params[0])
@@ -449,5 +667,6 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       [["ETH"], key],
     ]);
     expect(query).toHaveBeenCalledTimes(4);
+    expect(logFinance).not.toHaveBeenCalled();
   });
 }

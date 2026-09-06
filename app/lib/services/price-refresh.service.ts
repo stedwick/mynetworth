@@ -13,11 +13,21 @@ import {
 } from "@/app/lib/price-refresh";
 import { getCryptoPrices } from "@/app/api/crypto/price/service";
 import { getWalletBalanceUsd } from "@/app/api/crypto/wallet/service";
-import { isEthAddress } from "@/app/api/crypto/wallet/utils";
+import {
+  isEthAddress,
+  isBtcAddress,
+  isSolAddress,
+  abbreviateWalletAddress,
+  isSupportedWalletAddress,
+} from "@/app/api/crypto/wallet/utils";
 import { getYahooQuotes } from "@/app/api/stocks/price/service";
 import { mapYahooQuotesToPrices } from "@/app/api/stocks/price/utils";
+import { logFinance } from "@/app/lib/finance-log";
 
-type AssetRow = Selectable<DB["assets"]> & { refresh_started_at: string };
+type AssetRow = Selectable<DB["assets"]> & {
+  refresh_started_at: string;
+  refresh_due: boolean;
+};
 type RefreshResult = { updated: number; skipped: number; failed: number };
 
 const updatePrices = async (
@@ -59,15 +69,39 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
   const raw = process.env.PRICE_REFRESH_SECONDS;
   const refreshSeconds = raw ? Number.parseInt(raw, 10) : 3600;
   const hasRefreshLimit = Number.isFinite(refreshSeconds) && refreshSeconds > 0;
-  const assets = (await sql.query(
+  const storedAssets = (await sql.query(
     `
-    SELECT *, now() AS refresh_started_at FROM assets
+    SELECT *, now() AS refresh_started_at,
+      ${hasRefreshLimit ? "price_updated_at < now() - ($2::double precision * interval '1 second')" : "true"} AS refresh_due
+    FROM assets
     WHERE user_id = $1 AND kind <> 'manual'
-      ${hasRefreshLimit ? "AND price_updated_at < now() - ($2::double precision * interval '1 second')" : ""}
   `,
     hasRefreshLimit ? [userId, refreshSeconds] : [userId],
   )) as AssetRow[];
-  if (assets.length === 0) return { updated: 0, skipped: 0, failed: 0 };
+  for (const asset of storedAssets) {
+    const address = asset.wallet_address?.trim() ?? "";
+    const supported =
+      asset.kind === "wallet"
+        ? isSupportedWalletAddress(address)
+        : asset.kind === "crypto"
+          ? isSupportedCryptoSymbol(asset.ticker_symbol)
+          : true;
+    if (supported && asset.refresh_due) continue;
+    const label =
+      asset.kind === "wallet"
+        ? `${isBtcAddress(address) ? "BTC" : isEthAddress(address) ? "ETH/EVM" : isSolAddress(address) ? "SOL" : "unsupported"} wallet ${abbreviateWalletAddress(address)}`
+        : `${asset.ticker_symbol.trim().toUpperCase()} ${asset.kind === "stock" ? "stock" : "crypto"} price`;
+    logFinance(
+      "skip",
+      supported
+        ? `Skipping ${label}: its saved price is still fresh (refresh interval: ${refreshSeconds} seconds).`
+        : `Skipping ${label}: automatic pricing is not supported; keeping its saved value.`,
+    );
+  }
+  const assets = storedAssets.filter((asset) => asset.refresh_due);
+  if (assets.length === 0) {
+    return { updated: 0, skipped: 0, failed: 0 };
+  }
   // Use database time, not application-server clocks, to order overlapping refreshes.
   const startedAt = assets[0].refresh_started_at;
 
@@ -85,6 +119,10 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
   );
   const apiKey = process.env.ANKR_API_KEY;
   if ((cryptoSymbols.length || walletAddresses.length) && !apiKey?.trim()) {
+    logFinance(
+      "error",
+      "Cannot refresh crypto: ANKR_API_KEY is not configured.",
+    );
     throw new Error("Missing ANKR_API_KEY");
   }
 

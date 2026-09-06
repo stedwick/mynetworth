@@ -57,6 +57,14 @@ Set these in `.env` or `.env.local`:
 
 Set `ANKR_API_KEY` in the environment used by your Next.js process, then run `bun dev`. Test BTC/EVM wallet creation, crypto autocomplete/price lookup, and Refresh on `/me`. Use `PRICE_REFRESH_SECONDS=0` temporarily to refresh existing fresh rows immediately, then restore `3600`. Existing Solana wallets and unsupported symbols should remain unchanged. No database migration is needed.
 
+### Reading Refresh Logs
+
+- Each Ankr wallet lookup prints one result, e.g. `Using Ankr API, ETH/EVM wallet 0x1234...abcd has a USD balance of $500.00.` Crypto quotes likewise show their symbol and price. Full wallet addresses, credentials, provider URLs, and user IDs are never logged.
+- Yahoo prints every requested symbol and price: `[SUCCESS] Using Yahoo Finance, COIN stock price is $125.00 USD (fresh).` or `[CACHE] Using cached Yahoo Finance price, COIN is $125.00 USD (fetched 5 minutes ago).`
+- Only the bracketed labels are colored: `[SUCCESS]` green, `[CACHE]` magenta, `[SKIP]` yellow, and `[FAILURE]` red. Skipped assets get a plain-English reason; there are no request IDs, HTTP traces, or eligibility counters.
+- Colors are automatic for terminals; `FORCE_COLOR=1` enables them through pipes, while `NO_COLOR` or `FORCE_COLOR=0` disables them. Labels remain readable without color.
+- Finance logs write directly to server streams because Next.js replays `console` output captured inside `use cache`. `PRICE_REFRESH_SECONDS=0` bypasses DB freshness, not Yahoo's separate quote cache.
+
 ## Auth + Example Routes
 
 Neon Auth is wired with UI routes and middleware:
