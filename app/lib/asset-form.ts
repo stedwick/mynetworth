@@ -27,6 +27,7 @@ const numericString = (message: string) =>
 export const assetFormSchema = z
   .object({
     walletAddress: z.string().trim(),
+    hyperliquidEnabled: z.boolean().optional(),
     name: requiredString("Asset name is required."),
     ticker: requiredString("Ticker symbol is required."),
     category: requiredString("Category is required."),
@@ -36,6 +37,16 @@ export const assetFormSchema = z
     quantity: numericString("Quantity must be a number."),
   })
   .superRefine((data, ctx) => {
+    if (
+      data.hyperliquidEnabled &&
+      !isHyperliquidEligible(data.kind, data.walletAddress)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Hyperliquid requires a valid EVM wallet address.",
+        path: ["hyperliquidEnabled"],
+      });
+    }
     if (
       data.kind === "wallet" &&
       !isBtcAddress(data.walletAddress) &&
@@ -75,6 +86,7 @@ export type NormalizedAssetFormValues = {
   categoryInput: string;
   kind: AssetKind;
   walletAddress: string | null;
+  hyperliquidEnabled?: boolean;
   quantity: number;
   valueCents: number;
   sortOrder: number;
@@ -83,6 +95,11 @@ export type NormalizedAssetFormValues = {
 export type AssetFormRecord = Selectable<DB["assets"]> & {
   category_name: string;
 };
+
+export const isHyperliquidEligible = (
+  kind: string,
+  walletAddress: string | null,
+): boolean => kind === "wallet" && isEthAddress(walletAddress?.trim() ?? "");
 
 export const getWalletAddressError = (
   kind: string,
@@ -115,6 +132,7 @@ export const normalizeAssetFormValues = (
     tickerSymbol,
     categoryInput,
     kind: parsed.kind,
+    hyperliquidEnabled: parsed.hyperliquidEnabled,
     walletAddress: walletAddress.length > 0 ? walletAddress : null,
     quantity:
       parsed.kind === "wallet" ? 1 : parseNumericString(parsed.quantity),
@@ -131,6 +149,7 @@ export const assetFormValuesFromRecord = (
 
   return {
     walletAddress: record.wallet_address?.trim() ?? "",
+    hyperliquidEnabled: record.hyperliquid_enabled,
     name: record.name?.trim() ?? "",
     ticker: record.ticker_symbol?.trim().toUpperCase() ?? "",
     category: record.category_name?.trim() ?? "",
@@ -143,6 +162,7 @@ export const assetFormValuesFromRecord = (
 
 export const assetEditDefaultValues: AssetEditFormValues = {
   walletAddress: "",
+  hyperliquidEnabled: false,
   name: "",
   ticker: "",
   category: "",

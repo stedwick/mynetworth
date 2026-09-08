@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { computeNetWorthSummary } from "./networth";
 
 import {
   buildAssetCategories,
@@ -38,6 +39,8 @@ const categories: CategoryRow[] = [
 const assets: AssetRow[] = [
   {
     id: "a1",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c1",
     name: "Wallet Asset",
     kind: "wallet",
@@ -53,6 +56,8 @@ const assets: AssetRow[] = [
   },
   {
     id: "a2",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c1",
     name: "Manual Asset",
     kind: "manual",
@@ -68,6 +73,8 @@ const assets: AssetRow[] = [
   },
   {
     id: "a3",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c2",
     name: "Unknown Kind",
     kind: "mystery",
@@ -83,6 +90,8 @@ const assets: AssetRow[] = [
   },
   {
     id: "a4",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c2",
     name: "BTC Wallet",
     kind: "wallet",
@@ -99,6 +108,26 @@ const assets: AssetRow[] = [
 ];
 
 describe("buildAssetCategories", () => {
+  it("carries secondary balances without changing any totals", () => {
+    const baseline = computeNetWorthSummary(
+      buildAssetCategories(categories, assets),
+    );
+    for (const balance of [null, "0", "12345678", "-1234"]) {
+      const result = buildAssetCategories(
+        categories,
+        assets.map((asset) => ({
+          ...asset,
+          hyperliquid_enabled: asset.id === "a1",
+          hyperliquid_balance_cents: asset.id === "a1" ? balance : null,
+        })),
+      );
+      expect(result[0].items[1]).toMatchObject({
+        hyperliquidEnabled: true,
+        hyperliquidBalanceCents: balance,
+      });
+      expect(computeNetWorthSummary(result)).toEqual(baseline);
+    }
+  });
   it("groups, sorts, and normalizes assets", () => {
     const result = buildAssetCategories(categories, assets);
 

@@ -83,6 +83,8 @@ const mapAssetItem = (asset: AssetRow): AssetItem => {
       ...baseItem,
       kind,
       walletNetwork: inferWalletNetwork(asset.wallet_address, ticker),
+      hyperliquidEnabled: asset.hyperliquid_enabled,
+      hyperliquidBalanceCents: asset.hyperliquid_balance_cents,
     };
   }
 

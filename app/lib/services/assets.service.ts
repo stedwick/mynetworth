@@ -4,6 +4,7 @@ import { sql } from "@/app/lib/db";
 import { resolveCategoryId } from "@/app/lib/assets";
 import {
   getWalletAddressError,
+  isHyperliquidEligible,
   type AssetFormRecord,
 } from "@/app/lib/asset-form";
 import { getInitialPriceUpdatedAt } from "@/app/lib/asset-price-updated-at";
@@ -14,6 +15,7 @@ export type CreateAssetInput = {
   categoryInput: string;
   kind: string;
   walletAddress: string | null;
+  hyperliquidEnabled?: boolean;
   quantity: number;
   valueCents: number;
   sortOrder: number;
@@ -25,6 +27,7 @@ export async function createAssetForUser(
 ): Promise<void> {
   const walletError = getWalletAddressError(input.kind, input.walletAddress);
   if (walletError) throw new Error(walletError);
+  validateHyperliquid(input);
   const categoryId = await resolveCategoryId(userId, input.categoryInput);
   const priceUpdatedAt = getInitialPriceUpdatedAt(input.kind, new Date());
 
@@ -39,7 +42,8 @@ export async function createAssetForUser(
       value_cents,
       wallet_address,
       price_updated_at,
-      sort_order
+      sort_order,
+      hyperliquid_enabled
     )
     VALUES (
       ${userId},
@@ -51,7 +55,8 @@ export async function createAssetForUser(
       ${input.kind === "wallet" ? 0 : input.valueCents},
       ${input.walletAddress?.trim() ?? null},
       ${priceUpdatedAt},
-      ${input.sortOrder}
+      ${input.sortOrder},
+      ${input.hyperliquidEnabled ?? false}
     )
   `;
 }
@@ -81,12 +86,13 @@ export async function upsertAssetForUser(
   const walletAddress = input.walletAddress?.trim() ?? null;
   const walletError = getWalletAddressError(input.kind, walletAddress);
   if (walletError) throw new Error(walletError);
+  validateHyperliquid(input);
   const categoryId = await resolveCategoryId(userId, input.categoryInput);
   const priceUpdatedAt = getInitialPriceUpdatedAt(input.kind, new Date());
   const stalePriceUpdatedAt = getInitialPriceUpdatedAt("wallet", new Date());
 
   // Preserve live wallet values in SQL so a form opened before a refresh cannot overwrite them.
-  const rows = await sql`
+  const write = sql`
     INSERT INTO assets (
       id,
       user_id,
@@ -146,8 +152,37 @@ export async function upsertAssetForUser(
     WHERE assets.user_id = ${userId}
     RETURNING id
   `;
+  // The identity trigger resets old opt-ins. Apply an explicit new choice only
+  // after that reset, under the same row lock and transaction.
+  const rows =
+    input.hyperliquidEnabled === undefined
+      ? await write
+      : (
+          await sql.transaction([
+            write,
+            sql`
+              UPDATE assets SET hyperliquid_enabled = ${input.hyperliquidEnabled}
+              WHERE user_id = ${userId} AND id = ${assetId}
+            `,
+          ])
+        )[0];
   if (rows.length === 0) {
     throw new Error("Asset could not be updated.");
+  }
+}
+
+function validateHyperliquid(input: CreateAssetInput): void {
+  if (
+    input.hyperliquidEnabled !== undefined &&
+    typeof input.hyperliquidEnabled !== "boolean"
+  ) {
+    throw new Error("Hyperliquid enabled must be a boolean.");
+  }
+  if (
+    input.hyperliquidEnabled &&
+    !isHyperliquidEligible(input.kind, input.walletAddress)
+  ) {
+    throw new Error("Hyperliquid requires a valid EVM wallet address.");
   }
 }
 

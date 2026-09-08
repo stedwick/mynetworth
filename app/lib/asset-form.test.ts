@@ -6,6 +6,7 @@ import {
   assetEditDefaultValues,
   getWalletAddressError,
   getPriceForIdentityChange,
+  isHyperliquidEligible,
   normalizeAssetFormValues,
   type AssetFormRecord,
 } from "./asset-form";
@@ -217,6 +218,8 @@ describe("assetFormValuesFromRecord", () => {
     const now = new Date("2025-01-02T00:00:00Z");
     const baseRecord: AssetFormRecord = {
       id: "asset-1",
+      hyperliquid_enabled: false,
+      hyperliquid_balance_cents: null,
       user_id: "user-1",
       category_id: "category-1",
       name: " Retirement Fund ",
@@ -244,12 +247,24 @@ describe("assetFormValuesFromRecord", () => {
     expect(result.order).toBe("3");
     expect(result.kind).toBe("crypto");
     expect(result.walletAddress).toBe("");
+    expect(result.hyperliquidEnabled).toBe(false);
+    expect(
+      assetFormValuesFromRecord({
+        ...baseRecord,
+        kind: "wallet",
+        wallet_address: "0x396343362be2A4dA1cE0C1C210945346fb82Aa49",
+        hyperliquid_enabled: true,
+        hyperliquid_balance_cents: "1234",
+      }).hyperliquidEnabled,
+    ).toBe(true);
   });
 
   it("falls back when values are missing or invalid", () => {
     const now = new Date("2025-01-02T00:00:00Z");
     const baseRecord: AssetFormRecord = {
       id: "asset-2",
+      hyperliquid_enabled: false,
+      hyperliquid_balance_cents: null,
       user_id: "user-2",
       category_id: "category-2",
       name: "",
@@ -274,5 +289,69 @@ describe("assetFormValuesFromRecord", () => {
     expect(result.price).toBe("1");
     expect(result.order).toBe("1");
     expect(result.walletAddress).toBe("");
+  });
+});
+
+describe("Hyperliquid form", () => {
+  const evm = "0x396343362be2A4dA1cE0C1C210945346fb82Aa49";
+  const values = {
+    ...assetEditDefaultValues,
+    kind: "wallet" as const,
+    name: "Wallet",
+    ticker: "WALLET",
+    category: "Crypto",
+    walletAddress: ` ${evm} `,
+  };
+
+  it("accepts only valid EVM wallets for opt-in", () => {
+    expect(isHyperliquidEligible("wallet", ` ${evm} `)).toBe(true);
+    expect(
+      normalizeAssetFormValues({ ...values, hyperliquidEnabled: true })
+        .hyperliquidEnabled,
+    ).toBe(true);
+    for (const walletAddress of [
+      null,
+      "",
+      "0xabc",
+      "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4",
+      "So11111111111111111111111111111111111111112",
+    ]) {
+      expect(isHyperliquidEligible("wallet", walletAddress)).toBe(false);
+      expect(
+        assetFormSchema.safeParse({
+          ...values,
+          walletAddress,
+          hyperliquidEnabled: true,
+        }).success,
+      ).toBe(false);
+    }
+    for (const kind of ["stock", "crypto", "manual"]) {
+      expect(isHyperliquidEligible(kind, evm)).toBe(false);
+      expect(
+        assetFormSchema.safeParse({ ...values, kind, hyperliquidEnabled: true })
+          .success,
+      ).toBe(false);
+    }
+  });
+
+  it("preserves omission, supports opt-out, and strips client balances", () => {
+    expect(assetEditDefaultValues.hyperliquidEnabled).toBe(false);
+    const { hyperliquidEnabled: _enabled, ...oldPayload } = values;
+    expect(
+      normalizeAssetFormValues(oldPayload).hyperliquidEnabled,
+    ).toBeUndefined();
+    expect(normalizeAssetFormValues(values).hyperliquidEnabled).toBe(false);
+    const parsed = assetFormSchema.parse({
+      ...values,
+      hyperliquidEnabled: true,
+      hyperliquidBalanceCents: "999999",
+      hyperliquid_balance_cents: "999999",
+    });
+    expect(parsed).not.toHaveProperty("hyperliquidBalanceCents");
+    expect(parsed).not.toHaveProperty("hyperliquid_balance_cents");
+    expect(
+      assetFormSchema.safeParse({ ...values, hyperliquidEnabled: "true" })
+        .success,
+    ).toBe(false);
   });
 });

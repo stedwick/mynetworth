@@ -66,6 +66,17 @@ export default function AssetRow({ item }: { item: AssetItem }) {
       </td>
       <td className={`px-4 py-3 text-right ${getTotalColorClass(total)}`}>
         {formatUsd(total)}
+        {item.kind === "wallet" && item.hyperliquidEnabled ? (
+          <div className="mt-1 text-xs font-normal text-slate-500 dark:text-white/50">
+            <div>
+              Hyperliquid:{" "}
+              {item.hyperliquidBalanceCents == null
+                ? "Not fetched"
+                : formatUsd(Number(item.hyperliquidBalanceCents) / 100)}
+            </div>
+            <div>Excluded from totals</div>
+          </div>
+        ) : null}
       </td>
     </tr>
   );

@@ -45,7 +45,7 @@ Set these in `.env` or `.env.local`:
 
 ## Crypto Data
 
-- Use only the existing Yahoo Finance and Ankr integrations. Ankr replaces Mobula and BTCScan; no Moralis or Mobula key is required.
+- Normal crypto valuations use Yahoo Finance and Ankr. The opt-in Hyperliquid preview uses its public read-only API; no additional API key is required.
 - Bitcoin wallets use Blockbook address balances with `details=basic&secondary=usd`.
 - EVM wallets aggregate 17 mainnets: Ethereum, Arbitrum, Avalanche, Base, BNB Chain, Fantom, Flare, Gnosis, Linea, Optimism, Polygon, Scroll, Story, Taiko, Telos, Xai, and X Layer. Only Ankr-whitelisted tokens are included; this is not comprehensive DeFi/NFT net worth.
 - Solana wallets track **native SOL only**, using Ankr's finalized `getBalance` result multiplied by Yahoo's SOL-USD quote. SPL tokens, NFTs, and separate staking accounts are excluded; the UI and logs say `SOL only`. Existing Solana wallets refresh on the normal schedule. Sonic and Monad remain excluded from EVM totals.
@@ -54,9 +54,13 @@ Set these in `.env` or `.env.local`:
 - Refresh is on demand when entering `/me` or clicking Refresh, not a background hourly job. Eligible crypto values are fetched without a second service-cache layer. Up to four wallet requests run concurrently. Successful values and timestamps update together; failures preserve old values and are reported. Stocks still use Yahoo.
 - A Bitcoin address is not an entire HD wallet account. XPUB tracking is not implemented.
 
-### Testing The Migration
+### Hyperliquid Preview
 
-Set `ANKR_API_KEY` in the environment used by your Next.js process, then run `bun dev`. Test BTC/EVM/Solana wallet creation, SOL/ZEC/TRX/FIL price lookup, and Refresh on `/me`. Use `PRICE_REFRESH_SECONDS=0` temporarily to refresh existing fresh rows immediately, then restore `3600`. Check the `SOL only` label and compare the native SOL amount multiplied by SOL-USD. No database migration is needed.
+- Before deploying this version, manually apply `bun run migrate:latest`, then run `bun run codegen` against the migrated database. Migration `20260907_add_hyperliquid_assets` adds only `hyperliquid_enabled` (default false) and nullable `hyperliquid_balance_cents`. A trigger clears the preview on address/kind changes, including edits from the old app. The old app remains compatible; leave the columns in place if rolling back the app.
+- Check **Hyperliquid** when adding/editing an Ethereum-format wallet. Refresh saves the normal Ankr balance first, then independently fetches Hyperliquid. The small gray preview is **excluded from every total**. `Not fetched` means unknown; `$0.00` means verified zero. Failures retain the saved preview.
+- Scope: mainnet HyperCore spot, standard USDC-collateral perp account equity across discovered DEXs, and vault equity. Unified accounts use spot as the trading-balance source of truth. USDC is valued at par; other spot assets require a direct USDC market. Staking, HyperEVM and rewards are excluded.
+- Unsupported/ambiguous modes (`default`, portfolio margin, legacy DEX abstraction), active lending, subaccount aggregation and unsupported collateral/markets fail rather than return partial totals. This is an experimental reader, not comprehensive DeFi coverage.
+- Hyperliquid shares `PRICE_REFRESH_SECONDS`; it has no independent timestamp. Normal success followed by preview failure waits for the next eligible refresh. For manual testing, temporarily use `PRICE_REFRESH_SECONDS=0`, then restore `3600`. Across server instances, independently failed normal refreshes have only snapshot-based secondary write protection, not strict secondary recency ordering.
 
 ### Reading Refresh Logs
 

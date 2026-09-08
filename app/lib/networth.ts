@@ -12,7 +12,12 @@ type BaseAssetItem = {
 
 export type AssetItem =
   | (BaseAssetItem & { kind: "stock" | "crypto" | "manual" })
-  | (BaseAssetItem & { kind: "wallet"; walletNetwork: WalletNetwork });
+  | (BaseAssetItem & {
+      kind: "wallet";
+      walletNetwork: WalletNetwork;
+      hyperliquidEnabled?: boolean;
+      hyperliquidBalanceCents?: string | null;
+    });
 
 export type AssetCategory = {
   id: string;

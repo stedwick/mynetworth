@@ -35,9 +35,14 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
         .trim();
       calls.push({ text, params });
       if (text.startsWith("INSERT INTO assets")) return written;
+      if (text.startsWith("UPDATE assets SET hyperliquid_enabled")) return [];
       throw new Error(`Unexpected SQL: ${text}`);
     },
   );
+  const transaction = mock(async (queries: Promise<unknown>[]) =>
+    Promise.all(queries),
+  );
+  Object.assign(sql, { transaction });
   const category = mock(async (_user: string, _input: string) => "category-a");
   mock.module("server-only", () => ({}));
   mock.module("@/app/lib/db", () => ({ sql }));
@@ -65,6 +70,7 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
     calls.length = 0;
     written = [{ id: "asset-a" }];
     category.mockClear();
+    transaction.mockClear();
   });
   afterEach(() => expect(network).not.toHaveBeenCalled());
   afterAll(() => network.mockRestore());
@@ -76,7 +82,7 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
       expect(category.mock.calls).toEqual([["user-a", "Crypto"]]);
       expect(calls).toEqual([
         {
-          text: "INSERT INTO assets ( user_id, category_id, name, kind, ticker_symbol, quantity, value_cents, wallet_address, price_updated_at, sort_order ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 )",
+          text: "INSERT INTO assets ( user_id, category_id, name, kind, ticker_symbol, quantity, value_cents, wallet_address, price_updated_at, sort_order, hyperliquid_enabled ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )",
           params: [
             "user-a",
             "category-a",
@@ -88,6 +94,7 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
             address,
             stale,
             3,
+            false,
           ],
         },
       ]);
@@ -111,6 +118,8 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
       await upsert("user-a", "asset-a", input(` ${address} `));
       expect(category.mock.calls).toEqual([["user-a", "Crypto"]]);
       expect(calls).toHaveLength(1);
+      expect(transaction).not.toHaveBeenCalled();
+      expect(calls[0].text).not.toContain("hyperliquid");
       const { text, params } = calls.at(-1)!;
       expect(params).toEqual([
         "asset-a",
@@ -155,4 +164,58 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
       expect(calls.at(-1)?.params.at(-1)).toBe("user-a");
     },
   );
+
+  it("creates an opted-in wallet with stale freshness and no client balance", async () => {
+    const payload = {
+      ...input(evm),
+      hyperliquidEnabled: true,
+      hyperliquidBalanceCents: 999999,
+    };
+    await create("user-a", payload);
+    expect(calls[0].params.at(-1)).toBe(true);
+    expect(calls[0].params[8]).toEqual(stale);
+    expect(calls[0].text).not.toContain("hyperliquid_balance_cents");
+  });
+
+  it.each([true, false])(
+    "applies explicit %s after the identity write in one transaction",
+    async (enabled) => {
+      await upsert("user-a", "asset-a", {
+        ...input(evm),
+        hyperliquidEnabled: enabled,
+      });
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(calls).toHaveLength(2);
+      expect(calls[0].text).toStartWith("INSERT INTO assets");
+      expect(calls[0].text).not.toContain("hyperliquid");
+      expect(calls[1]).toEqual({
+        text: "UPDATE assets SET hyperliquid_enabled = $1 WHERE user_id = $2 AND id = $3",
+        params: [enabled, "user-a", "asset-a"],
+      });
+    },
+  );
+
+  it("rejects ineligible or non-boolean opt-ins before any writes", async () => {
+    for (const payload of [
+      { ...input(btc), hyperliquidEnabled: true },
+      { ...input(sol), hyperliquidEnabled: true },
+      { ...input(evm), kind: "stock", hyperliquidEnabled: true },
+      { ...input(evm), hyperliquidEnabled: "true" as unknown as boolean },
+    ]) {
+      await expect(create("user-a", payload)).rejects.toThrow("Hyperliquid");
+      await expect(upsert("user-a", "asset-a", payload)).rejects.toThrow(
+        "Hyperliquid",
+      );
+    }
+    expect(calls).toEqual([]);
+    expect(category).not.toHaveBeenCalled();
+  });
+
+  it("does not claim success for refused explicit opt-ins", async () => {
+    written = [];
+    await expect(
+      upsert("user-a", "asset-a", { ...input(evm), hyperliquidEnabled: true }),
+    ).rejects.toThrow("Asset could not be updated");
+    expect(calls[1].params).toEqual([true, "user-a", "asset-a"]);
+  });
 }
