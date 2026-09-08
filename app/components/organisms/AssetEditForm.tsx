@@ -4,6 +4,7 @@ import { type FormEventHandler, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Combobox } from "@base-ui/react/combobox";
+import { Checkbox } from "@base-ui/react/checkbox";
 import { Dialog } from "@base-ui/react/dialog";
 import { Field } from "@base-ui/react/field";
 import { Radio } from "@base-ui/react/radio";
@@ -18,6 +19,7 @@ import {
 import {
   getPriceForIdentityChange,
   getWalletAddressError,
+  isHyperliquidEligible,
   type AssetEditFormValues,
 } from "@/app/lib/asset-form";
 import { AutocompleteInput } from "@/app/components/molecules/AutocompleteInput";
@@ -171,7 +173,7 @@ export default function AssetEditForm({
       noValidate
     >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-white/50">
-        All fields are required
+        Complete your asset details
       </p>
       <div className="grid gap-6 sm:grid-cols-2">
         <Controller
@@ -197,6 +199,9 @@ export default function AssetEditForm({
                     tickerValue,
                   );
                   setWalletError(null);
+                  if (value !== field.value) {
+                    setValue("hyperliquidEnabled", false, selectionOptions);
+                  }
                   field.onChange(value);
                 }}
                 className="grid gap-2 sm:grid-cols-2"
@@ -263,6 +268,13 @@ export default function AssetEditForm({
                       value={field.value}
                       onValueChange={(value) => {
                         setWalletError(null);
+                        if (value.trim() !== field.value.trim()) {
+                          setValue(
+                            "hyperliquidEnabled",
+                            false,
+                            selectionOptions,
+                          );
+                        }
                         field.onChange(value);
                       }}
                       onBlur={field.onBlur}
@@ -282,6 +294,43 @@ export default function AssetEditForm({
                       </p>
                     ) : null}
                   </Field.Root>
+                )}
+              />
+            ) : null}
+
+            {isHyperliquidEligible(selectedKind, walletAddress) ? (
+              <Controller
+                name="hyperliquidEnabled"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-white/70">
+                      <Checkbox.Root
+                        name={field.name}
+                        ref={field.ref}
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className="flex size-4 items-center justify-center rounded border border-slate-300 data-[checked]:bg-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 dark:border-white/30 dark:data-[checked]:bg-white dark:focus-visible:outline-white"
+                      >
+                        <Checkbox.Indicator>
+                          <Image
+                            src="/icons8/check.png"
+                            alt=""
+                            width={12}
+                            height={12}
+                            className="icon-on-primary"
+                          />
+                        </Checkbox.Indicator>
+                      </Checkbox.Root>
+                      Include Hyperliquid USDC (optional)
+                    </label>
+                    {fieldState.error ? (
+                      <p role="alert" className={fieldErrorClassName}>
+                        {fieldState.error.message}
+                      </p>
+                    ) : null}
+                  </div>
                 )}
               />
             ) : null}

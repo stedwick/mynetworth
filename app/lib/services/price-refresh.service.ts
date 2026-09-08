@@ -26,17 +26,25 @@ import {
 import { getYahooQuotes } from "@/app/api/stocks/price/service";
 import { mapYahooQuotesToPrices } from "@/app/api/stocks/price/utils";
 import { logFinance } from "@/app/lib/finance-log";
+import { getHyperliquidBalanceUsd } from "@/app/lib/services/hyperliquid.service";
 
 type AssetRow = Selectable<DB["assets"]> & {
   refresh_started_at: string;
   refresh_due: boolean;
 };
-type RefreshResult = { updated: number; skipped: number; failed: number };
+type RefreshResult = {
+  updated: number;
+  skipped: number;
+  failed: number;
+  hyperliquidFailed?: number;
+};
 
 const updatePrices = async (
   kind: "stock" | "crypto" | "wallet",
   prices: Record<string, number>,
   startedAt: string,
+  userId: string,
+  walletIds: string[] = [],
 ): Promise<void> => {
   const entries = Object.entries(prices);
   if (entries.length === 0) return;
@@ -63,8 +71,14 @@ const updatePrices = async (
       AND ${identity} = v.identity
       AND a.price_updated_at < $${params.length + 2}::timestamptz
       AND a.updated_at < $${params.length + 2}::timestamptz
+      ${kind === "wallet" ? `AND a.user_id = $${params.length + 3} AND a.id = ANY($${params.length + 4}::uuid[])` : ""}
   `,
-    [...params, kind, startedAt],
+    [
+      ...params,
+      kind,
+      startedAt,
+      ...(kind === "wallet" ? [userId, walletIds] : []),
+    ],
   );
 };
 
@@ -151,16 +165,64 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
     Object.assign(stocks.prices, result.prices);
     stocks.failed.push(...result.failed);
   }
-  await updatePrices("stock", stocks.prices, startedAt);
+  await updatePrices("stock", stocks.prices, startedAt, userId);
   const crypto = await collectRefreshPrices(cryptoSymbols, async (symbol) => {
     const prices = await getCryptoPrices([symbol], apiKey ?? "");
     return prices[symbol];
   });
-  await updatePrices("crypto", crypto.prices, startedAt);
+  await updatePrices("crypto", crypto.prices, startedAt, userId);
   const wallets = await collectRefreshPrices(walletAddresses, (address) =>
     getWalletBalanceUsd(address, apiKey ?? ""),
   );
-  await updatePrices("wallet", wallets.prices, startedAt);
+  // Do not consume the shared cooldown for other users or non-due duplicates.
+  await updatePrices(
+    "wallet",
+    wallets.prices,
+    startedAt,
+    userId,
+    assets.filter((asset) => asset.kind === "wallet").map((asset) => asset.id),
+  );
+
+  const hyperliquidAssets = assets.filter(
+    (asset) =>
+      asset.kind === "wallet" &&
+      asset.hyperliquid_enabled &&
+      isEthAddress(asset.wallet_address?.trim() ?? "") &&
+      Object.hasOwn(wallets.prices, asset.wallet_address!.trim().toLowerCase()),
+  );
+  const hyperliquid = await collectRefreshPrices(
+    hyperliquidAssets.map((asset) =>
+      asset.wallet_address!.trim().toLowerCase(),
+    ),
+    getHyperliquidBalanceUsd,
+  );
+  let hyperliquidFailed = 0;
+  for (const asset of hyperliquidAssets) {
+    const address = asset.wallet_address!.trim().toLowerCase();
+    if (!Object.hasOwn(hyperliquid.prices, address)) {
+      hyperliquidFailed++;
+      continue;
+    }
+    // Only attach the preview to this request's successful normal refresh.
+    await sql.query(
+      `
+      UPDATE assets AS a
+      SET hyperliquid_balance_cents = $1::bigint
+      WHERE a.id = $2 AND a.user_id = $3 AND a.kind = 'wallet'
+        AND a.hyperliquid_enabled = true
+        AND lower(btrim(a.wallet_address)) = $4
+        AND a.updated_at < $5::timestamptz
+        AND a.price_updated_at = $5::timestamptz
+      `,
+      [
+        Math.round(hyperliquid.prices[address] * 100),
+        asset.id,
+        userId,
+        address,
+        startedAt,
+      ],
+    );
+  }
 
   let updated = 0;
   let failed = 0;
@@ -183,7 +245,12 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
     if (result && Object.hasOwn(result.prices, key)) updated++;
     else if (result?.failed.includes(key)) failed++;
   }
-  return { updated, failed, skipped: assets.length - updated - failed };
+  return {
+    updated,
+    failed,
+    skipped: assets.length - updated - failed,
+    ...(hyperliquidFailed > 0 ? { hyperliquidFailed } : {}),
+  };
 };
 
 // Coalesce overlapping page/button refreshes within this server instance.

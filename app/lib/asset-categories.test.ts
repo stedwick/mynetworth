@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { computeNetWorthSummary } from "./networth";
 
 import {
   buildAssetCategories,
@@ -38,6 +39,8 @@ const categories: CategoryRow[] = [
 const assets: AssetRow[] = [
   {
     id: "a1",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c1",
     name: "Wallet Asset",
     kind: "wallet",
@@ -53,6 +56,8 @@ const assets: AssetRow[] = [
   },
   {
     id: "a2",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c1",
     name: "Manual Asset",
     kind: "manual",
@@ -68,6 +73,8 @@ const assets: AssetRow[] = [
   },
   {
     id: "a3",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c2",
     name: "Unknown Kind",
     kind: "mystery",
@@ -83,6 +90,8 @@ const assets: AssetRow[] = [
   },
   {
     id: "a4",
+    hyperliquid_enabled: false,
+    hyperliquid_balance_cents: null,
     category_id: "c2",
     name: "BTC Wallet",
     kind: "wallet",
@@ -99,6 +108,65 @@ const assets: AssetRow[] = [
 ];
 
 describe("buildAssetCategories", () => {
+  it("maps persisted cents and includes eligible balances in summaries exactly once", () => {
+    const normalAssets = assets.map((asset) => ({ ...asset, quantity: "1" }));
+    const baseline = computeNetWorthSummary(
+      buildAssetCategories(categories, normalAssets),
+    );
+    for (const [balance, added] of [
+      [null, 0],
+      ["0", 0],
+      ["12345", 123.45],
+      ["-1234", 0],
+      ["9007199254740992", 0],
+    ] as const) {
+      const result = buildAssetCategories(
+        categories,
+        normalAssets.map((asset) => ({
+          ...asset,
+          hyperliquid_enabled: asset.id === "a1",
+          hyperliquid_balance_cents: asset.id === "a1" ? balance : null,
+          wallet_address:
+            asset.id === "a1"
+              ? ` ${asset.wallet_address} `
+              : asset.wallet_address,
+        })),
+      );
+      expect(result[0].items[1]).toMatchObject({
+        hyperliquidEnabled: true,
+        hyperliquidBalanceCents: balance,
+      });
+      expect(result[0].items[1].price).toBe(12.34);
+      expect(result[0].items[1].quantity).toBe(1);
+      const summary = computeNetWorthSummary(result);
+      expect(summary.categoryTotals.c1).toBeCloseTo(
+        baseline.categoryTotals.c1 + added,
+      );
+      expect(summary.categoryTotals.c2).toBe(baseline.categoryTotals.c2);
+      expect(summary.netWorth).toBeCloseTo(baseline.netWorth + added);
+    }
+    for (const overrides of [
+      { hyperliquid_enabled: false },
+      { wallet_address: null },
+      { wallet_address: "invalid" },
+      { wallet_address: assets[3].wallet_address },
+    ]) {
+      const result = buildAssetCategories(
+        categories,
+        normalAssets.map((asset) =>
+          asset.id === "a1"
+            ? {
+                ...asset,
+                hyperliquid_enabled: true,
+                hyperliquid_balance_cents: "12345",
+                ...overrides,
+              }
+            : asset,
+        ),
+      );
+      expect(computeNetWorthSummary(result)).toEqual(baseline);
+    }
+  });
   it("groups, sorts, and normalizes assets", () => {
     const result = buildAssetCategories(categories, assets);
 

@@ -4,6 +4,7 @@ import {
   formatQuantity,
   formatUsd,
   getAssetTotal,
+  getAssetHyperliquidBalance,
   type AssetItem,
 } from "@/app/lib/networth";
 import EditLink from "@/app/components/atoms/EditLink";
@@ -15,6 +16,7 @@ import {
 
 export default function AssetRow({ item }: { item: AssetItem }) {
   const total = getAssetTotal(item);
+  const hyperliquidBalance = getAssetHyperliquidBalance(item);
   const icon = getAssetIcon(item);
   const isDebt = total < 0;
 
@@ -60,6 +62,28 @@ export default function AssetRow({ item }: { item: AssetItem }) {
       </td>
       <td className="px-4 py-3 text-slate-700 dark:text-white/70">
         {formatUsd(item.price)}
+        {item.kind === "wallet" &&
+        item.walletNetwork === "evm" &&
+        item.hyperliquidEnabled ? (
+          <div
+            className="mt-1 flex items-center gap-1 text-xs font-normal text-slate-500 dark:text-white/50"
+            role="img"
+            aria-label={`Hyperliquid: ${hyperliquidBalance == null ? "Not fetched" : formatUsd(hyperliquidBalance)}`}
+            title="Hyperliquid USDC"
+          >
+            <Image
+              src="/hyperliquid.png"
+              alt=""
+              aria-hidden="true"
+              width={14}
+              height={14}
+              className="h-3.5 w-3.5 shrink-0"
+            />
+            <span aria-hidden="true">
+              {hyperliquidBalance == null ? "-" : formatUsd(hyperliquidBalance)}
+            </span>
+          </div>
+        ) : null}
       </td>
       <td className="w-16 px-4 py-3 text-slate-700 dark:text-white/70">
         {formatQuantity(item.quantity)}

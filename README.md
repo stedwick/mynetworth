@@ -45,7 +45,7 @@ Set these in `.env` or `.env.local`:
 
 ## Crypto Data
 
-- Use only the existing Yahoo Finance and Ankr integrations. Ankr replaces Mobula and BTCScan; no Moralis or Mobula key is required.
+- Normal crypto valuations use Yahoo Finance and Ankr. The opt-in Hyperliquid balance uses its public read-only API; no additional API key is required.
 - Bitcoin wallets use Blockbook address balances with `details=basic&secondary=usd`.
 - EVM wallets aggregate 17 mainnets: Ethereum, Arbitrum, Avalanche, Base, BNB Chain, Fantom, Flare, Gnosis, Linea, Optimism, Polygon, Scroll, Story, Taiko, Telos, Xai, and X Layer. Only Ankr-whitelisted tokens are included; this is not comprehensive DeFi/NFT net worth.
 - Solana wallets track **native SOL only**, using Ankr's finalized `getBalance` result multiplied by Yahoo's SOL-USD quote. SPL tokens, NFTs, and separate staking accounts are excluded; the UI and logs say `SOL only`. Existing Solana wallets refresh on the normal schedule. Sonic and Monad remain excluded from EVM totals.
@@ -54,9 +54,17 @@ Set these in `.env` or `.env.local`:
 - Refresh is on demand when entering `/me` or clicking Refresh, not a background hourly job. Eligible crypto values are fetched without a second service-cache layer. Up to four wallet requests run concurrently. Successful values and timestamps update together; failures preserve old values and are reported. Stocks still use Yahoo.
 - A Bitcoin address is not an entire HD wallet account. XPUB tracking is not implemented.
 
-### Testing The Migration
+### Hyperliquid Balance
 
-Set `ANKR_API_KEY` in the environment used by your Next.js process, then run `bun dev`. Test BTC/EVM/Solana wallet creation, SOL/ZEC/TRX/FIL price lookup, and Refresh on `/me`. Use `PRICE_REFRESH_SECONDS=0` temporarily to refresh existing fresh rows immediately, then restore `3600`. Check the `SOL only` label and compare the native SOL amount multiplied by SOL-USD. No database migration is needed.
+- Before deploying this version, manually apply `bun run migrate:latest`, then run `bun run codegen` against the migrated database. The unapplied migration `20260907_add_hyperliquid_assets` adds only `hyperliquid_enabled` (boolean, default false, not null) and nullable bigint `hyperliquid_balance_cents`; no triggers or functions. Leave the columns in place if rolling back the app.
+- Check **Hyperliquid** when adding/editing an Ethereum-format wallet. One app save handles opt-in, clears the preview on address/kind changes or opt-out, and makes new opt-ins due for normal refresh. Omitted fields preserve same-identity choices. Accepted compatibility tradeoff: old-app identity edits do not clear the choice or preview and can leave stale data.
+- Refresh saves the normal Ankr balance first and fetches Hyperliquid only after normal valuation succeeds. Eligible opted-in EVM wallet balances are **included once in asset, category, and net worth totals**, added to the normal wallet total without changing its price or quantity. Disabled/ineligible balances are ignored. Failures retain the saved balance, which continues to count.
+- PRICE shows the colored Hyperliquid icon and a gray amount below the normal price, with no visible words. Hover text says `Hyperliquid USDC`; the form checkbox says `Include Hyperliquid USDC (optional)` without explanatory text. A dash means unknown/invalid, not verified zero; `$0.00` means verified zero. Accessible labels identify Hyperliquid. The unmodified icon in `public/hyperliquid.png` was downloaded from the official app's declared favicon, https://app.hyperliquid.xyz/favicon-32x32.png (2026-09-08).
+- Scope: standard (`disabled`) uses **primary perpetual equity in USD**, from `clearinghouseState.marginSummary.accountValue` with verified USDC collateral. `unifiedAccount` uses **shared USDC only**, from `spotClearinghouseState.balances` (`token: 0`, `coin: "USDC"`), valued at par. Its `total` already includes `hold`; perps equity is never added or requested for unified accounts. No token prices, vaults, separate accounts, other holdings or lending queries.
+- Both paths require user role, finite nonnegative safe-cent values and an unchanged mode at the final recheck. Negative unified balances/debt are explicitly unsupported, not clamped to zero. Missing USDC means zero only in a validated balances list; malformed or duplicate USDC fails. Portfolio margin, `default` and legacy DEX abstraction remain unsupported. This is an experimental reader, not comprehensive DeFi coverage.
+- Mode is not stored; existing balances retain their previous scope until a successful refresh. Secondary failures are nonfatal, retain saved values and log sanitized reasons with mode-specific scope when known. No new columns or migration are needed for unified support or total inclusion.
+- API references: [spot balances](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/spot) and [account abstraction modes](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes), checked through Context7.
+- Hyperliquid shares `PRICE_REFRESH_SECONDS`; it has no independent timestamp. Normal failure skips Hyperliquid without a secondary failure count or consuming cooldown. Normal success followed by preview failure waits for the next eligible refresh. Preview writes require this refresh's normal timestamp and unchanged user, ID, wallet identity, opt-in and edit freshness. For manual testing, temporarily use `PRICE_REFRESH_SECONDS=0`, then restore `3600`.
 
 ### Reading Refresh Logs
 
