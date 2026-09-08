@@ -50,15 +50,9 @@ if (process.env.ASSET_EDIT_FORM_TEST_CHILD !== "1") {
           }}
         />,
       );
-      expect(html).toContain("Hyperliquid (optional)");
-      expect(html).toContain(
-        "standard primary perps equity or unified shared USDC",
-      );
-      expect(html).toContain("No other tokens, vaults, or separate");
-      expect(html).not.toContain("Shared account modes are unsupported.");
+      expect(html).toContain("Include Hyperliquid USDC (optional)");
+      expect(html).not.toContain("hyperliquid-description");
       expect(html).toContain(`aria-checked="${enabled}"`);
-      expect(html).toContain("Excluded from asset,");
-      expect(html).toContain("worth totals.");
       expect(html).not.toContain('name="hyperliquidBalanceCents"');
     }
     for (const walletAddress of [

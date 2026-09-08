@@ -49,8 +49,22 @@ export function formatQuantity(value: number): string {
   return quantityFormatter.format(value);
 }
 
+export function getAssetHyperliquidBalance(item: AssetItem): number | null {
+  if (
+    item.kind !== "wallet" ||
+    item.walletNetwork !== "evm" ||
+    !item.hyperliquidEnabled ||
+    item.hyperliquidBalanceCents == null ||
+    !/^\d+$/.test(item.hyperliquidBalanceCents)
+  ) {
+    return null;
+  }
+  const cents = Number(item.hyperliquidBalanceCents);
+  return Number.isSafeInteger(cents) && cents >= 0 ? cents / 100 : null;
+}
+
 export function getAssetTotal(item: AssetItem) {
-  return item.price * item.quantity;
+  return item.price * item.quantity + (getAssetHyperliquidBalance(item) ?? 0);
 }
 
 export function computeNetWorthSummary(

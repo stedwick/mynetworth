@@ -311,7 +311,6 @@ export default function AssetEditForm({
                         checked={field.value ?? false}
                         onCheckedChange={field.onChange}
                         onBlur={field.onBlur}
-                        aria-describedby="hyperliquid-description"
                         className="flex size-4 items-center justify-center rounded border border-slate-300 data-[checked]:bg-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 dark:border-white/30 dark:data-[checked]:bg-white dark:focus-visible:outline-white"
                       >
                         <Checkbox.Indicator>
@@ -324,18 +323,8 @@ export default function AssetEditForm({
                           />
                         </Checkbox.Indicator>
                       </Checkbox.Root>
-                      Hyperliquid (optional)
+                      Include Hyperliquid USDC (optional)
                     </label>
-                    <p
-                      id="hyperliquid-description"
-                      className="text-xs text-slate-500 dark:text-white/50"
-                    >
-                      Show standard primary perps equity or unified shared USDC
-                      in USD (USDC at par). No other tokens, vaults, or separate
-                      accounts are added. Excluded from asset, category, and net
-                      worth totals. Changing the wallet address or asset type
-                      clears this choice.
-                    </p>
                     {fieldState.error ? (
                       <p role="alert" className={fieldErrorClassName}>
                         {fieldState.error.message}
