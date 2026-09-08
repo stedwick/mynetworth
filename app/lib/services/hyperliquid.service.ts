@@ -3,17 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { logFinance } from "@/app/lib/finance-log";
 import { formatUsd } from "@/app/lib/networth";
-import {
-  calculateHyperliquidBalanceUsd,
-  hyperliquidAddressSchema,
-  hyperliquidDexsSchema,
-  hyperliquidLendingSchema,
-  hyperliquidModeSchema,
-  hyperliquidPerpMetaSchema,
-  hyperliquidPerpsSchema,
-  hyperliquidRoleSchema,
-  hyperliquidSubaccountsSchema,
-} from "@/app/lib/hyperliquid";
+import { calculateHyperliquidBalanceUsd } from "@/app/lib/hyperliquid";
 
 const requestInfo = async (body: Record<string, string>): Promise<unknown> => {
   let response: Response;
@@ -49,104 +39,53 @@ const parse = <T>(
   return result.data;
 };
 
-/** Mainnet HyperCore only; excludes staking, HyperEVM and rewards.
- * Rejects masters with subaccounts (no implicit aggregation), agents, vault
- * addresses, missing users, lending and ambiguous/unsupported account modes.
- * Standard-mode DEXs must use USDC collateral if they have equity or positions.
- */
+/** Primary standard perpetual account only; no other holdings are aggregated. */
 export const getHyperliquidBalanceUsd = async (
   address: string,
 ): Promise<number> => {
-  if (!hyperliquidAddressSchema.safeParse(address).success)
+  if (
+    !z
+      .string()
+      .regex(/^0x[0-9a-fA-F]{40}$/)
+      .safeParse(address).success
+  )
     throw new Error("Invalid Hyperliquid address");
   const label = `${address.slice(0, 6)}...${address.slice(-4)}`;
   try {
     parse(
-      hyperliquidRoleSchema,
+      z.object({ role: z.literal("user") }),
       await requestInfo({ type: "userRole", user: address }),
       "Unsupported Hyperliquid account role",
     );
     const mode = parse(
-      hyperliquidModeSchema,
+      z.literal("disabled"),
       await requestInfo({ type: "userAbstraction", user: address }),
       "Unsupported Hyperliquid account mode",
     );
-    parse(
-      hyperliquidSubaccountsSchema,
-      await requestInfo({ type: "subAccounts", user: address }),
-      "Hyperliquid subaccount aggregation is unsupported",
-    );
-    parse(
-      hyperliquidLendingSchema,
-      await requestInfo({ type: "borrowLendUserState", user: address }),
-      "Hyperliquid lending is unsupported or invalid",
-    );
-
-    let perpsEquity = 0;
-    if (mode === "disabled") {
-      const dexs = parse(
-        hyperliquidDexsSchema,
-        await requestInfo({ type: "perpDexs" }),
-        "Invalid Hyperliquid DEX list",
-      );
-      // Sequential requests bound provider concurrency, including HIP-3 discovery.
-      for (const dex of dexs) {
-        const name = dex?.name ?? "";
-        const state = parse(
-          hyperliquidPerpsSchema,
-          await requestInfo({
-            type: "clearinghouseState",
-            user: address,
-            dex: name,
-          }),
-          "Invalid Hyperliquid perpetual equity",
-        );
-        if (
-          state.marginSummary.accountValue === 0 &&
-          state.assetPositions.every(({ position }) => position.szi === 0)
-        )
-          continue;
-        const [meta] = parse(
-          hyperliquidPerpMetaSchema,
-          await requestInfo({ type: "metaAndAssetCtxs", dex: name }),
-          "Invalid Hyperliquid perpetual metadata",
-        );
-        if (meta.collateralToken !== 0)
-          throw new Error(
-            "Hyperliquid non-USDC perpetual collateral is unsupported",
-          );
-        perpsEquity += state.marginSummary.accountValue;
-      }
-    }
-    const spot = await requestInfo({
-      type: "spotClearinghouseState",
+    const state = await requestInfo({
+      type: "clearinghouseState",
       user: address,
+      dex: "",
     });
-    const markets = await requestInfo({ type: "spotMetaAndAssetCtxs" });
-    const vaults = await requestInfo({
-      type: "userVaultEquities",
-      user: address,
+    const metadata = await requestInfo({
+      type: "metaAndAssetCtxs",
+      dex: "",
     });
     // Detect mode changes during the non-atomic multi-request valuation.
     if (
       (await requestInfo({ type: "userAbstraction", user: address })) !== mode
     )
       throw new Error("Hyperliquid account mode changed during valuation");
-    const total = calculateHyperliquidBalanceUsd(
-      spot,
-      markets,
-      vaults,
-      perpsEquity,
-    );
+    const total = calculateHyperliquidBalanceUsd(state, metadata);
     logFinance(
       "success",
-      `Hyperliquid wallet ${label} is worth ${formatUsd(total)} (excluding staking)`,
+      `Hyperliquid wallet ${label} primary perpetual equity is ${formatUsd(total)} USD`,
     );
     return total;
   } catch (error) {
     logFinance(
       "error",
-      `Hyperliquid wallet ${label} valuation failed (excluding staking)`,
+      `Hyperliquid wallet ${label} primary perpetual equity valuation failed`,
     );
     throw error;
   }

@@ -69,7 +69,7 @@ export default function AssetRow({ item }: { item: AssetItem }) {
         {item.kind === "wallet" && item.hyperliquidEnabled ? (
           <div className="mt-1 text-xs font-normal text-slate-500 dark:text-white/50">
             <div>
-              Hyperliquid:{" "}
+              Hyperliquid primary perp (USD):{" "}
               {item.hyperliquidBalanceCents == null
                 ? "Not fetched"
                 : formatUsd(Number(item.hyperliquidBalanceCents) / 100)}

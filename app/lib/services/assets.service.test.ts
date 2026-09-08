@@ -35,14 +35,9 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
         .trim();
       calls.push({ text, params });
       if (text.startsWith("INSERT INTO assets")) return written;
-      if (text.startsWith("UPDATE assets SET hyperliquid_enabled")) return [];
       throw new Error(`Unexpected SQL: ${text}`);
     },
   );
-  const transaction = mock(async (queries: Promise<unknown>[]) =>
-    Promise.all(queries),
-  );
-  Object.assign(sql, { transaction });
   const category = mock(async (_user: string, _input: string) => "category-a");
   mock.module("server-only", () => ({}));
   mock.module("@/app/lib/db", () => ({ sql }));
@@ -70,7 +65,6 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
     calls.length = 0;
     written = [{ id: "asset-a" }];
     category.mockClear();
-    transaction.mockClear();
   });
   afterEach(() => expect(network).not.toHaveBeenCalled());
   afterAll(() => network.mockRestore());
@@ -118,8 +112,6 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
       await upsert("user-a", "asset-a", input(` ${address} `));
       expect(category.mock.calls).toEqual([["user-a", "Crypto"]]);
       expect(calls).toHaveLength(1);
-      expect(transaction).not.toHaveBeenCalled();
-      expect(calls[0].text).not.toContain("hyperliquid");
       const { text, params } = calls.at(-1)!;
       expect(params).toEqual([
         "asset-a",
@@ -133,21 +125,30 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
         address,
         stale,
         3,
+        false,
+        null,
+        null,
         stale,
         stale,
         "user-a",
       ]);
       expect(text).toContain(
-        "INSERT INTO assets ( id, user_id, category_id, name, kind, ticker_symbol, quantity, value_cents, wallet_address, price_updated_at, sort_order ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 ) ON CONFLICT (id)",
+        "INSERT INTO assets ( id, user_id, category_id, name, kind, ticker_symbol, quantity, value_cents, wallet_address, price_updated_at, sort_order, hyperliquid_enabled ) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 ) ON CONFLICT (id)",
       );
       expect(text).toContain("quantity = EXCLUDED.quantity,");
       expect(text).toContain(
         "value_cents = CASE WHEN EXCLUDED.kind = 'wallet' AND assets.kind = 'wallet' AND btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address THEN assets.value_cents ELSE EXCLUDED.value_cents END,",
       );
       expect(text).toContain(
-        "price_updated_at = CASE WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind THEN $12 WHEN EXCLUDED.kind = 'wallet' THEN CASE WHEN btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address THEN assets.price_updated_at ELSE $13 END",
+        "price_updated_at = CASE WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind OR (EXCLUDED.hyperliquid_enabled AND NOT assets.hyperliquid_enabled) THEN $15 WHEN EXCLUDED.kind = 'wallet' THEN CASE WHEN btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address THEN assets.price_updated_at ELSE $16 END",
       );
-      expect(text).toEndWith("WHERE assets.user_id = $14 RETURNING id");
+      expect(text).toContain(
+        "hyperliquid_enabled = CASE WHEN $13::boolean IS NOT NULL THEN EXCLUDED.hyperliquid_enabled WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind OR btrim(assets.wallet_address) IS DISTINCT FROM EXCLUDED.wallet_address THEN false ELSE assets.hyperliquid_enabled END,",
+      );
+      expect(text).toContain(
+        "hyperliquid_balance_cents = CASE WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind OR btrim(assets.wallet_address) IS DISTINCT FROM EXCLUDED.wallet_address OR NOT assets.hyperliquid_enabled OR $14::boolean = false THEN NULL ELSE assets.hyperliquid_balance_cents END,",
+      );
+      expect(text).toEndWith("WHERE assets.user_id = $17 RETURNING id");
     },
   );
 
@@ -159,7 +160,7 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
         "Asset could not be updated",
       );
       expect(calls.at(-1)?.text).toEndWith(
-        "WHERE assets.user_id = $14 RETURNING id",
+        "WHERE assets.user_id = $17 RETURNING id",
       );
       expect(calls.at(-1)?.params.at(-1)).toBe("user-a");
     },
@@ -178,20 +179,22 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
   });
 
   it.each([true, false])(
-    "applies explicit %s after the identity write in one transaction",
+    "saves explicit %s in the same statement as identity and preview resets",
     async (enabled) => {
       await upsert("user-a", "asset-a", {
         ...input(evm),
         hyperliquidEnabled: enabled,
       });
-      expect(transaction).toHaveBeenCalledTimes(1);
-      expect(calls).toHaveLength(2);
+      expect(calls).toHaveLength(1);
       expect(calls[0].text).toStartWith("INSERT INTO assets");
-      expect(calls[0].text).not.toContain("hyperliquid");
-      expect(calls[1]).toEqual({
-        text: "UPDATE assets SET hyperliquid_enabled = $1 WHERE user_id = $2 AND id = $3",
-        params: [enabled, "user-a", "asset-a"],
-      });
+      expect(calls[0].params.slice(11, 14)).toEqual([
+        enabled,
+        enabled,
+        enabled,
+      ]);
+      expect(calls[0].text).toContain(
+        "WHEN $13::boolean IS NOT NULL THEN EXCLUDED.hyperliquid_enabled",
+      );
     },
   );
 
@@ -216,6 +219,7 @@ if (process.env.ASSETS_SERVICE_TEST_CHILD !== "1") {
     await expect(
       upsert("user-a", "asset-a", { ...input(evm), hyperliquidEnabled: true }),
     ).rejects.toThrow("Asset could not be updated");
-    expect(calls[1].params).toEqual([true, "user-a", "asset-a"]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].params.at(-1)).toBe("user-a");
   });
 }

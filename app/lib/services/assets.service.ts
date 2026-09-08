@@ -92,7 +92,7 @@ export async function upsertAssetForUser(
   const stalePriceUpdatedAt = getInitialPriceUpdatedAt("wallet", new Date());
 
   // Preserve live wallet values in SQL so a form opened before a refresh cannot overwrite them.
-  const write = sql`
+  const rows = await sql`
     INSERT INTO assets (
       id,
       user_id,
@@ -104,7 +104,8 @@ export async function upsertAssetForUser(
       value_cents,
       wallet_address,
       price_updated_at,
-      sort_order
+      sort_order,
+      hyperliquid_enabled
     )
     VALUES (
       ${assetId},
@@ -117,7 +118,8 @@ export async function upsertAssetForUser(
       ${input.kind === "wallet" ? 0 : input.valueCents},
       ${walletAddress},
       ${priceUpdatedAt},
-      ${input.sortOrder}
+      ${input.sortOrder},
+      ${input.hyperliquidEnabled ?? false}
     )
     ON CONFLICT (id)
     DO UPDATE SET
@@ -135,8 +137,25 @@ export async function upsertAssetForUser(
       wallet_address = EXCLUDED.wallet_address,
       sort_order = EXCLUDED.sort_order,
       updated_at = now(),
+      hyperliquid_enabled = CASE
+        WHEN ${input.hyperliquidEnabled ?? null}::boolean IS NOT NULL
+          THEN EXCLUDED.hyperliquid_enabled
+        WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind
+          OR btrim(assets.wallet_address) IS DISTINCT FROM EXCLUDED.wallet_address
+          THEN false
+        ELSE assets.hyperliquid_enabled
+      END,
+      hyperliquid_balance_cents = CASE
+        WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind
+          OR btrim(assets.wallet_address) IS DISTINCT FROM EXCLUDED.wallet_address
+          OR NOT assets.hyperliquid_enabled
+          OR ${input.hyperliquidEnabled ?? null}::boolean = false
+          THEN NULL
+        ELSE assets.hyperliquid_balance_cents
+      END,
       price_updated_at = CASE
         WHEN assets.kind IS DISTINCT FROM EXCLUDED.kind
+          OR (EXCLUDED.hyperliquid_enabled AND NOT assets.hyperliquid_enabled)
           THEN ${stalePriceUpdatedAt}
         WHEN EXCLUDED.kind = 'wallet' THEN CASE
           WHEN btrim(assets.wallet_address) IS NOT DISTINCT FROM EXCLUDED.wallet_address
@@ -152,20 +171,6 @@ export async function upsertAssetForUser(
     WHERE assets.user_id = ${userId}
     RETURNING id
   `;
-  // The identity trigger resets old opt-ins. Apply an explicit new choice only
-  // after that reset, under the same row lock and transaction.
-  const rows =
-    input.hyperliquidEnabled === undefined
-      ? await write
-      : (
-          await sql.transaction([
-            write,
-            sql`
-              UPDATE assets SET hyperliquid_enabled = ${input.hyperliquidEnabled}
-              WHERE user_id = ${userId} AND id = ${assetId}
-            `,
-          ])
-        )[0];
   if (rows.length === 0) {
     throw new Error("Asset could not be updated.");
   }

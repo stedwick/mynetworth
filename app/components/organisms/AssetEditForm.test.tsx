@@ -50,7 +50,12 @@ if (process.env.ASSET_EDIT_FORM_TEST_CHILD !== "1") {
           }}
         />,
       );
-      expect(html).toContain("Hyperliquid");
+      expect(html).toContain("Hyperliquid primary perp (optional)");
+      expect(html).toContain("primary standard perpetual equity in USD");
+      expect(html).toContain(
+        "Excludes spot, vaults, other perp DEXs, subaccounts,",
+      );
+      expect(html).toContain("Shared account modes are unsupported.");
       expect(html).toContain(`aria-checked="${enabled}"`);
       expect(html).toContain("Excluded from asset,");
       expect(html).toContain("category, and net worth totals.");

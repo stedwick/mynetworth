@@ -155,167 +155,41 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
   afterAll(() => network.mockRestore());
 
   const secondarySql =
-    "UPDATE assets AS a SET hyperliquid_balance_cents = $1::bigint WHERE a.id = $2 AND a.user_id = $3 AND a.kind = 'wallet' AND a.hyperliquid_enabled = true AND lower(btrim(a.wallet_address)) = $4 AND a.updated_at < $5::timestamptz AND a.price_updated_at <= $5::timestamptz AND (a.price_updated_at = $5::timestamptz OR ( a.price_updated_at < $5::timestamptz AND a.hyperliquid_balance_cents IS NOT DISTINCT FROM $6::bigint ))";
-
-  // Execute the exact single-identity SQL contracts against shared persisted rows.
-  // Captured writes can be interleaved like independent server instances without
-  // the same-instance coalescer or a live database obscuring the ordering cases.
-  const applyWalletWrite = (
-    stored: (Asset & { user_id: string })[],
-    [text, params]: [string, unknown[]],
-  ) => {
-    if (compact(text) === secondarySql) {
-      const [cents, id, user, identity, timestamp, snapshot] = params;
-      const cutoff = new Date(timestamp as string);
-      for (const row of stored) {
-        if (
-          row.id === id &&
-          row.user_id === user &&
-          row.kind === "wallet" &&
-          row.hyperliquid_enabled &&
-          row.wallet_address?.trim().toLowerCase() === identity &&
-          row.updated_at < cutoff &&
-          row.price_updated_at <= cutoff &&
-          (row.price_updated_at.getTime() === cutoff.getTime() ||
-            (row.price_updated_at < cutoff &&
-              row.hyperliquid_balance_cents === snapshot))
-        ) {
-          row.hyperliquid_balance_cents = String(cents);
-        }
-      }
-      return;
-    }
-    expect(compact(text)).toBe(
-      "UPDATE assets AS a SET value_cents = v.value_cents::bigint, price_updated_at = $4::timestamptz , quantity = 1 FROM (VALUES ($1, $2)) AS v(identity, value_cents) WHERE a.kind = $3 AND CASE WHEN btrim(a.wallet_address) LIKE '0x%' THEN lower(btrim(a.wallet_address)) ELSE btrim(a.wallet_address) END = v.identity AND a.price_updated_at < $4::timestamptz AND a.updated_at < $4::timestamptz AND a.user_id = $5 AND a.id = ANY($6::uuid[])",
-    );
-    const [identity, cents, kind, timestamp, user, ids] = params;
-    const cutoff = new Date(timestamp as string);
-    for (const row of stored) {
-      const address = row.wallet_address?.trim();
-      if (
-        row.kind === kind &&
-        row.user_id === user &&
-        (ids as string[]).includes(row.id) &&
-        (address?.startsWith("0x") ? address.toLowerCase() : address) ===
-          identity &&
-        row.price_updated_at < cutoff &&
-        row.updated_at < cutoff
-      ) {
-        row.value_cents = String(cents);
-        row.quantity = "1";
-        row.price_updated_at = cutoff;
-      }
-    }
-  };
+    "UPDATE assets AS a SET hyperliquid_balance_cents = $1::bigint WHERE a.id = $2 AND a.user_id = $3 AND a.kind = 'wallet' AND a.hyperliquid_enabled = true AND lower(btrim(a.wallet_address)) = $4 AND a.updated_at < $5::timestamptz AND a.price_updated_at = $5::timestamptz";
 
   it("normal wallet writes leave other users and same-user fresh duplicates eligible on their own cooldown", async () => {
-    const stored = [
-      { ...asset("wallet", evm), user_id: "user-a", hyperliquid_enabled: true },
-      {
-        ...asset("wallet", evm, false),
-        user_id: "user-a",
-        hyperliquid_enabled: true,
-        price_updated_at: new Date("2026-03-04T05:00:00Z"),
-      },
-      { ...asset("wallet", evm), user_id: "user-b", hyperliquid_enabled: true },
-    ];
-    const before = structuredClone(stored);
-    query.mockImplementation(async (text, params) => {
-      if (compact(text).startsWith("SELECT")) {
-        const cutoff = new Date(startedAt).getTime() - 3600_000;
-        return stored
-          .filter((row) => row.user_id === params[0])
-          .map((row) => ({
-            ...structuredClone(row),
-            refresh_due: row.price_updated_at.getTime() < cutoff,
-          }));
-      }
-      applyWalletWrite(stored, [text, params]);
-      return [];
-    });
+    rows = [asset("wallet", evm), asset("wallet", evm, false)];
     wallet.mockResolvedValue(10);
-    hyperliquid.mockResolvedValue(20);
     await refresh("user-a");
-    expect(stored[0].hyperliquid_balance_cents).toBe("2000");
-    expect(stored.slice(1)).toEqual(before.slice(1));
-    expect(writes()[0][1].slice(-2)).toEqual(["user-a", [stored[0].id]]);
+    expect(compact(writes()[0][0])).toContain(
+      "AND a.user_id = $5 AND a.id = ANY($6::uuid[])",
+    );
+    expect(writes()[0][1].slice(-2)).toEqual(["user-a", [rows[0].id]]);
+    rows = [asset("wallet", evm)];
     await refresh("user-b");
-    expect(hyperliquid).toHaveBeenCalledTimes(2);
-    expect(stored[2].hyperliquid_balance_cents).toBe("2000");
-    expect(stored[1]).toEqual(before[1]);
-    expect(writes()[2][1].slice(-2)).toEqual(["user-b", [stored[2].id]]);
+    expect(writes()[1][1].slice(-2)).toEqual(["user-b", [rows[0].id]]);
   });
 
-  it.each([
-    [true, "older-first"],
-    [true, "newer-first"],
-    [false, "older-first"],
-    [false, "newer-first"],
-  ] as const)(
-    "orders overlapping secondary writes (normal success %p, %s)",
-    async (normalSuccess, order) => {
-      const newerStartedAt = "2026-03-04T05:06:08.000Z";
-      const original = {
-        ...asset("wallet", evm),
-        user_id: "user-a",
-        hyperliquid_enabled: true,
-      };
-      const stored = [structuredClone(original)];
-      // Both requests select the same secondary snapshot before either finishes.
-      // Capture each request's real service SQL, then replay the overlapping schedule.
-      rows = [structuredClone(original)];
-      if (normalSuccess)
-        wallet.mockResolvedValueOnce(10).mockResolvedValueOnce(20);
-      hyperliquid.mockResolvedValueOnce(100).mockResolvedValueOnce(200);
-      await refresh("user-a");
-      const olderWrites = [...writes()];
-      query.mockClear();
-      rows = [
-        { ...structuredClone(original), refresh_started_at: newerStartedAt },
-      ];
-      await refresh("user-a");
-      const newerWrites = [...writes()];
-      expect(olderWrites).toHaveLength(normalSuccess ? 2 : 1);
-      expect(newerWrites).toHaveLength(normalSuccess ? 2 : 1);
-      expect(olderWrites.at(-1)![1][5]).toBeNull();
-      expect(newerWrites.at(-1)![1][5]).toBeNull();
-      const first = order === "older-first" ? olderWrites : newerWrites;
-      const second = order === "older-first" ? newerWrites : olderWrites;
-      first.forEach((write) => applyWalletWrite(stored, write));
-      expect(stored[0].hyperliquid_balance_cents).toBe(
-        order === "older-first" ? "10000" : "20000",
-      );
-      second.forEach((write) => applyWalletWrite(stored, write));
-      // Success gives strict ordering; two failed-normal requests only protect a
-      // changed snapshot, so the first secondary writer wins, not necessarily newest.
-      expect(stored[0].hyperliquid_balance_cents).toBe(
-        normalSuccess || order === "newer-first" ? "20000" : "10000",
-      );
-      expect(stored[0].price_updated_at).toEqual(
-        normalSuccess ? new Date(newerStartedAt) : original.price_updated_at,
-      );
-      expect(stored[0].value_cents).toBe(
-        normalSuccess ? "2000" : original.value_cents,
-      );
-      expect(stored[0].updated_at).toEqual(original.updated_at);
-    },
-  );
-
   it.each([0, 12.345])(
-    "saves only secondary cents (%p) for original opted-in rows even when normal wallets fail",
+    "saves only secondary cents (%p) for original opted-in rows after normal success",
     async (balance) => {
       rows = [asset("wallet", ` ${evm} `), asset("wallet", evm.toLowerCase())];
       rows.forEach((row) => (row.hyperliquid_enabled = true));
       rows[1].hyperliquid_balance_cents = "0";
       const old = structuredClone(rows);
+      wallet.mockResolvedValue(0);
       hyperliquid.mockResolvedValue(balance);
       expect(await refresh("user-a")).toEqual({
-        updated: 0,
-        failed: 2,
+        updated: 2,
+        failed: 0,
         skipped: 0,
       });
       expect(hyperliquid.mock.calls).toEqual([[evm.toLowerCase()]]);
-      expect(writes().map(([text, params]) => [compact(text), params])).toEqual(
+      expect(
+        writes()
+          .slice(1)
+          .map(([text, params]) => [compact(text), params]),
+      ).toEqual(
         rows.map((row) => [
           secondarySql,
           [
@@ -324,7 +198,6 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
             "user-a",
             evm.toLowerCase(),
             startedAt,
-            row.hyperliquid_balance_cents,
           ],
         ]),
       );
@@ -365,15 +238,25 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     },
   );
 
-  it("counts simultaneous normal and secondary failures independently", async () => {
+  it("skips Hyperliquid on normal failure without counting a secondary failure or consuming cooldown", async () => {
     rows = [{ ...asset("wallet", evm), hyperliquid_enabled: true }];
+    const before = structuredClone(rows);
     expect(await refresh("user-a")).toEqual({
       updated: 0,
       failed: 1,
       skipped: 0,
-      hyperliquidFailed: 1,
     });
     expect(writes()).toEqual([]);
+    expect(hyperliquid).not.toHaveBeenCalled();
+    expect(rows).toEqual(before);
+    wallet.mockResolvedValue(10);
+    hyperliquid.mockResolvedValue(20);
+    expect(await refresh("user-a")).toEqual({
+      updated: 1,
+      failed: 0,
+      skipped: 0,
+    });
+    expect(hyperliquid).toHaveBeenCalledTimes(1);
   });
 
   it("retains mixed Hyperliquid successes and writes only selected due opted-in IDs, not matching fresh or opted-out rows", async () => {
@@ -404,7 +287,6 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
       "user-a",
       evm.toLowerCase(),
       startedAt,
-      null,
     ]);
   });
 
@@ -455,7 +337,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
 
   it.each([
     "unchanged",
-    "normal-success",
+    "normal-not-written",
     "id",
     "user",
     "kind",
@@ -463,19 +345,23 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
     "address",
     "edited",
     "newer-price",
-    "newer-secondary",
-    "newer-zero",
   ])(
     "guards secondary writes against %s while preserving totals and timestamps",
     async (change) => {
       const original = { ...asset("wallet", evm), hyperliquid_enabled: true };
       rows = [original];
       const current = { ...structuredClone(original), user_id: "user-a" };
+      wallet.mockResolvedValue(10);
       query.mockImplementation(async (text, params) => {
         if (compact(text).startsWith("SELECT")) return structuredClone(rows);
+        if (compact(text).includes("SET value_cents")) {
+          if (change !== "normal-not-written")
+            current.price_updated_at = new Date(startedAt);
+          return [];
+        }
         // Execute only the exact secondary UPDATE contract against an intervening DB change.
         expect(compact(text)).toBe(secondarySql);
-        const [cents, id, user, address, timestamp, snapshot] = params;
+        const [cents, id, user, address, timestamp] = params;
         const cutoff = new Date(timestamp as string);
         if (
           current.id === id &&
@@ -484,10 +370,7 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
           current.hyperliquid_enabled &&
           current.wallet_address?.trim().toLowerCase() === address &&
           current.updated_at < cutoff &&
-          current.price_updated_at <= cutoff &&
-          (current.price_updated_at.getTime() === cutoff.getTime() ||
-            (current.price_updated_at < cutoff &&
-              current.hyperliquid_balance_cents === snapshot))
+          current.price_updated_at.getTime() === cutoff.getTime()
         ) {
           current.hyperliquid_balance_cents = String(cents);
         }
@@ -502,24 +385,13 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
         if (change === "address")
           current.wallet_address = `0x${"1".repeat(40)}`;
         if (change === "edited") current.updated_at = new Date(startedAt);
-        if (change === "normal-success")
-          current.price_updated_at = new Date(startedAt);
         if (change === "newer-price")
           current.price_updated_at = new Date("2026-03-04T05:06:08Z");
-        if (change === "newer-secondary")
-          current.hyperliquid_balance_cents = "99999";
-        if (change === "newer-zero") current.hyperliquid_balance_cents = "0";
         return 12.34;
       });
       await refresh("user-a");
       expect(current.hyperliquid_balance_cents).toBe(
-        ["unchanged", "normal-success"].includes(change)
-          ? "1234"
-          : change === "newer-secondary"
-            ? "99999"
-            : change === "newer-zero"
-              ? "0"
-              : null,
+        change === "unchanged" ? "1234" : null,
       );
       expect(current.value_cents).toBe(original.value_cents);
       expect(current.quantity).toBe(original.quantity);
@@ -527,11 +399,11 @@ if (process.env.PRICE_REFRESH_SERVICE_TEST_CHILD !== "1") {
         change === "edited" ? new Date(startedAt) : original.updated_at,
       );
       expect(current.price_updated_at).toEqual(
-        change === "normal-success"
-          ? new Date(startedAt)
+        change === "normal-not-written"
+          ? original.price_updated_at
           : change === "newer-price"
             ? new Date("2026-03-04T05:06:08Z")
-            : original.price_updated_at,
+            : new Date(startedAt),
       );
     },
   );

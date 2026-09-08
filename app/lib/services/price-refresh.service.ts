@@ -187,7 +187,8 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
     (asset) =>
       asset.kind === "wallet" &&
       asset.hyperliquid_enabled &&
-      isEthAddress(asset.wallet_address?.trim() ?? ""),
+      isEthAddress(asset.wallet_address?.trim() ?? "") &&
+      Object.hasOwn(wallets.prices, asset.wallet_address!.trim().toLowerCase()),
   );
   const hyperliquid = await collectRefreshPrices(
     hyperliquidAssets.map((asset) =>
@@ -202,10 +203,7 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
       hyperliquidFailed++;
       continue;
     }
-    // A successful normal refresh orders this result even if an older secondary
-    // write changed the snapshot. Independent failed-normal refreshes only have
-    // snapshot protection, not strict recency: these two columns cannot order
-    // their results or detect same-value/ABA writes without a secondary timestamp.
+    // Only attach the preview to this request's successful normal refresh.
     await sql.query(
       `
       UPDATE assets AS a
@@ -214,11 +212,7 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
         AND a.hyperliquid_enabled = true
         AND lower(btrim(a.wallet_address)) = $4
         AND a.updated_at < $5::timestamptz
-        AND a.price_updated_at <= $5::timestamptz
-        AND (a.price_updated_at = $5::timestamptz OR (
-          a.price_updated_at < $5::timestamptz
-          AND a.hyperliquid_balance_cents IS NOT DISTINCT FROM $6::bigint
-        ))
+        AND a.price_updated_at = $5::timestamptz
       `,
       [
         Math.round(hyperliquid.prices[address] * 100),
@@ -226,7 +220,6 @@ const refreshPrices = async (userId: string): Promise<RefreshResult> => {
         userId,
         address,
         startedAt,
-        asset.hyperliquid_balance_cents,
       ],
     );
   }
