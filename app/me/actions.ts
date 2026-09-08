@@ -15,11 +15,7 @@ export async function refreshAssetPrices(_formData: FormData): Promise<void> {
   const result = await refreshAssetPricesForUser(data.user.id);
 
   revalidatePath("/me");
-  if (result.hyperliquidFailed) {
-    throw new Error(
-      `Could not refresh Hyperliquid for ${result.hyperliquidFailed} wallet(s). Previous Hyperliquid values were preserved. ${result.failed > 0 ? `Also could not refresh ${result.failed} asset(s); their previous values were preserved. ` : "Other asset prices refreshed normally. "}Hyperliquid shares the wallet price refresh cooldown; wallets refreshed successfully can retry Hyperliquid when that cooldown expires.`,
-    );
-  }
+  // Optional preview failures are logged by the service, not fatal to the page.
   if (result.failed > 0) {
     throw new Error(
       `Could not refresh ${result.failed} asset(s). Previous values were preserved; try again shortly.`,

@@ -51,6 +51,12 @@ if (process.env.HYPERLIQUID_TEST_CHILD !== "1") {
         ],
       },
       metaAndAssetCtxs: [{ collateralToken: 0 }, []],
+      spotClearinghouseState: {
+        balances: [
+          { coin: "USDC", token: 0, total: "123.45", hold: "23.45" },
+          { coin: "HYPE", token: 150, total: "not a price" },
+        ],
+      },
     };
     fetchMock.mockImplementation(async (_input, init) => {
       const { type } = JSON.parse(String(init?.body));
@@ -98,20 +104,16 @@ if (process.env.HYPERLIQUID_TEST_CHILD !== "1") {
     expect(JSON.stringify(logFinance.mock.calls)).not.toContain(address);
   });
 
-  it.each([
-    "unifiedAccount",
-    "portfolioMargin",
-    "dexAbstraction",
-    "default",
-    "future",
-    null,
-  ])("rejects unsupported mode %p", async (mode) => {
-    responses.userAbstraction = mode;
-    await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(
-      "Unsupported Hyperliquid account mode",
-    );
-    expect(types()).toEqual(["userRole", "userAbstraction"]);
-  });
+  it.each(["portfolioMargin", "dexAbstraction", "default", "future", null])(
+    "rejects unsupported mode %p",
+    async (mode) => {
+      responses.userAbstraction = mode;
+      const reason = `Unsupported Hyperliquid account mode (${mode === "future" || mode === null ? "unknown or malformed" : mode})`;
+      await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(reason);
+      expect(logFinance.mock.calls[0][1]).toContain(reason);
+      expect(types()).toEqual(["userRole", "userAbstraction"]);
+    },
+  );
 
   it.each(["agent", "vault", "subAccount", "missing", "future"])(
     "rejects role %s instead of a misleading empty total",
@@ -147,9 +149,15 @@ if (process.env.HYPERLIQUID_TEST_CHILD !== "1") {
     expect(logFinance).not.toHaveBeenCalled();
   });
 
-  it.each(["network", "timeout", "http", "json", "schema"])(
+  it.each([
+    ["network", "Hyperliquid network request failed or timed out"],
+    ["timeout", "Hyperliquid network request failed or timed out"],
+    ["http", "Hyperliquid HTTP request failed (503)"],
+    ["json", "Invalid Hyperliquid JSON response or response timed out"],
+    ["schema", "Unsupported Hyperliquid account role"],
+  ])(
     "sanitizes %s failure without a success or fallback",
-    async (failure) => {
+    async (failure, reason) => {
       const unsafe = `${address} https://private.test secret-body`;
       fetchMock.mockImplementation(async () => {
         if (failure === "network") throw new Error(unsafe);
@@ -166,32 +174,163 @@ if (process.env.HYPERLIQUID_TEST_CHILD !== "1") {
         error = caught;
       }
       expect(error).toBeInstanceOf(Error);
-      expect(String(error)).not.toContain(unsafe);
+      expect((error as Error).message).toBe(reason);
       expect(logFinance).toHaveBeenCalledTimes(1);
       expect(logFinance).toHaveBeenCalledWith(
         "error",
-        "Hyperliquid wallet 0xaaaa...aaaa primary perpetual equity valuation failed",
+        `Hyperliquid wallet 0xaaaa...aaaa preview valuation failed: ${reason}. Previous preview preserved; retry after the wallet price refresh cooldown.`,
+      );
+      for (const secret of [address, "https://private.test", "secret-body"])
+        expect(JSON.stringify(logFinance.mock.calls)).not.toContain(secret);
+    },
+  );
+
+  it("never interpolates unrecognized mode text", async () => {
+    responses.userAbstraction = `${address}\nhttps://private.test secret-body`;
+    await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(
+      "Unsupported Hyperliquid account mode (unknown or malformed)",
+    );
+    expect(logFinance.mock.calls[0][1]).toContain(
+      "account mode (unknown or malformed)",
+    );
+    for (const secret of [address, "https://private.test", "secret-body"])
+      expect(JSON.stringify(logFinance.mock.calls)).not.toContain(secret);
+  });
+
+  it.each([
+    [
+      "clearinghouseState",
+      { marginSummary: { accountValue: "secret-body" } },
+      "Invalid Hyperliquid perpetual equity (marginSummary.accountValue)",
+    ],
+    [
+      "clearinghouseState",
+      { marginSummary: { accountValue: "90071992547410" } },
+      "Invalid Hyperliquid equity cents (unsafe integer)",
+    ],
+    [
+      "metaAndAssetCtxs",
+      [{ collateralToken: "secret-body" }, []],
+      "Invalid or non-USDC Hyperliquid perpetual collateral (collateralToken)",
+    ],
+  ] as const)(
+    "logs a controlled validation reason for %s",
+    async (type, payload, reason) => {
+      responses[type] = payload;
+      await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(reason);
+      expect(logFinance.mock.calls[0][1]).toContain(reason);
+      expect(JSON.stringify(logFinance.mock.calls)).not.toContain(
+        "secret-body",
       );
     },
   );
 
-  it("fails on a mid-request mode change", async () => {
-    let modes = 0;
-    fetchMock.mockImplementation(async (_input, init) => {
-      const { type } = JSON.parse(String(init?.body));
-      return Response.json(
-        type === "userAbstraction" && ++modes > 1
-          ? "unifiedAccount"
-          : responses[type],
-      );
+  it("sanitizes unexpected errors rather than logging or rethrowing their text", async () => {
+    const helper = await import("@/app/lib/hyperliquid");
+    const calculate = spyOn(
+      helper,
+      "calculateHyperliquidBalanceUsd",
+    ).mockImplementation(() => {
+      throw new Error(`${address}\nhttps://private.test secret-body`);
     });
-    await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(
-      "mode changed",
-    );
-    expect(logFinance.mock.calls.every((call) => call[0] === "error")).toBe(
-      true,
+    try {
+      await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(
+        "Unexpected Hyperliquid valuation failure",
+      );
+      expect(logFinance.mock.calls[0][1]).toContain(
+        "Unexpected Hyperliquid valuation failure",
+      );
+      for (const secret of [address, "https://private.test", "secret-body"])
+        expect(JSON.stringify(logFinance.mock.calls)).not.toContain(secret);
+    } finally {
+      calculate.mockRestore();
+    }
+  });
+
+  it("reads only unified shared USDC without adding hold or requesting perps", async () => {
+    responses.userAbstraction = "unifiedAccount";
+    expect(await getHyperliquidBalanceUsd(address)).toBe(123.45);
+    expect(types()).toEqual([
+      "userRole",
+      "userAbstraction",
+      "spotClearinghouseState",
+      "userAbstraction",
+    ]);
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
+      type: "spotClearinghouseState",
+      user: address,
+    });
+    expect(logFinance).toHaveBeenCalledWith(
+      "success",
+      "Hyperliquid wallet 0xaaaa...aaaa shared USDC is $123.45 USD",
     );
   });
+
+  it.each([
+    { balances: [] },
+    { balances: [{ coin: "USDC", token: 0, total: "0", hold: "0" }] },
+  ])("accepts unified verified zero %p", async (state) => {
+    responses.userAbstraction = "unifiedAccount";
+    responses.spotClearinghouseState = state;
+    expect(await getHyperliquidBalanceUsd(address)).toBe(0);
+    expect(types()).toEqual([
+      "userRole",
+      "userAbstraction",
+      "spotClearinghouseState",
+      "userAbstraction",
+    ]);
+  });
+
+  it("logs sanitized unified validation failure without a perps fallback", async () => {
+    responses.userAbstraction = "unifiedAccount";
+    responses.spotClearinghouseState = {
+      balances: [
+        { coin: "USDC", token: 0, total: `${address} secret-body`, hold: "0" },
+      ],
+    };
+    await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(
+      "Invalid Hyperliquid shared USDC total or hold",
+    );
+    expect(types()).toEqual([
+      "userRole",
+      "userAbstraction",
+      "spotClearinghouseState",
+    ]);
+    expect(logFinance).toHaveBeenCalledTimes(1);
+    expect(logFinance.mock.calls[0][0]).toBe("error");
+    expect(logFinance.mock.calls[0][1]).toContain(
+      "shared USDC valuation failed:",
+    );
+    expect(logFinance.mock.calls[0][1]).toContain(
+      "Previous preview preserved;",
+    );
+    for (const secret of [address, "secret-body"])
+      expect(JSON.stringify(logFinance.mock.calls)).not.toContain(secret);
+  });
+
+  it.each(["disabled", "unifiedAccount"])(
+    "fails on a mid-request mode change from %s",
+    async (mode) => {
+      responses.userAbstraction = mode;
+      let modes = 0;
+      fetchMock.mockImplementation(async (_input, init) => {
+        const { type } = JSON.parse(String(init?.body));
+        return Response.json(
+          type === "userAbstraction" && ++modes > 1
+            ? mode === "disabled"
+              ? "unifiedAccount"
+              : "disabled"
+            : responses[type],
+        );
+      });
+      await expect(getHyperliquidBalanceUsd(address)).rejects.toThrow(
+        "mode changed",
+      );
+      expect(logFinance.mock.calls.every((call) => call[0] === "error")).toBe(
+        true,
+      );
+    },
+  );
 
   it.each([
     "userRole",

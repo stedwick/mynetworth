@@ -324,18 +324,17 @@ export default function AssetEditForm({
                           />
                         </Checkbox.Indicator>
                       </Checkbox.Root>
-                      Hyperliquid primary perp (optional)
+                      Hyperliquid (optional)
                     </label>
                     <p
                       id="hyperliquid-description"
                       className="text-xs text-slate-500 dark:text-white/50"
                     >
-                      Show primary standard perpetual equity in USD (USDC at
-                      par). Excludes spot, vaults, other perp DEXs, subaccounts,
-                      staking, HyperEVM, and rewards. Shared account modes are
-                      unsupported. Excluded from asset, category, and net worth
-                      totals. Changing the wallet address or asset type clears
-                      this choice.
+                      Show standard primary perps equity or unified shared USDC
+                      in USD (USDC at par). No other tokens, vaults, or separate
+                      accounts are added. Excluded from asset, category, and net
+                      worth totals. Changing the wallet address or asset type
+                      clears this choice.
                     </p>
                     {fieldState.error ? (
                       <p role="alert" className={fieldErrorClassName}>

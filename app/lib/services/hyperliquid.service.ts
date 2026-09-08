@@ -3,7 +3,11 @@ import "server-only";
 import { z } from "zod";
 import { logFinance } from "@/app/lib/finance-log";
 import { formatUsd } from "@/app/lib/networth";
-import { calculateHyperliquidBalanceUsd } from "@/app/lib/hyperliquid";
+import {
+  calculateHyperliquidBalanceUsd,
+  calculateHyperliquidSharedUsdcUsd,
+  HyperliquidError,
+} from "@/app/lib/hyperliquid";
 
 const requestInfo = async (body: Record<string, string>): Promise<unknown> => {
   let response: Response;
@@ -18,14 +22,20 @@ const requestInfo = async (body: Record<string, string>): Promise<unknown> => {
     });
     if (!response.ok) await response.body?.cancel();
   } catch {
-    throw new Error("Hyperliquid network request failed or timed out");
+    throw new HyperliquidError(
+      "Hyperliquid network request failed or timed out",
+    );
   }
   if (!response.ok)
-    throw new Error(`Hyperliquid HTTP request failed (${response.status})`);
+    throw new HyperliquidError(
+      `Hyperliquid HTTP request failed (${response.status})`,
+    );
   try {
     return await response.json();
   } catch {
-    throw new Error("Invalid Hyperliquid JSON response or response timed out");
+    throw new HyperliquidError(
+      "Invalid Hyperliquid JSON response or response timed out",
+    );
   }
 };
 
@@ -35,11 +45,11 @@ const parse = <T>(
   message: string,
 ): T => {
   const result = schema.safeParse(payload);
-  if (!result.success) throw new Error(message);
+  if (!result.success) throw new HyperliquidError(message);
   return result.data;
 };
 
-/** Primary standard perpetual account only; no other holdings are aggregated. */
+/** Standard primary perpetual equity OR unified shared USDC, never both. */
 export const getHyperliquidBalanceUsd = async (
   address: string,
 ): Promise<number> => {
@@ -49,8 +59,9 @@ export const getHyperliquidBalanceUsd = async (
       .regex(/^0x[0-9a-fA-F]{40}$/)
       .safeParse(address).success
   )
-    throw new Error("Invalid Hyperliquid address");
+    throw new HyperliquidError("Invalid Hyperliquid address");
   const label = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  let scope = "preview";
   try {
     parse(
       z.object({ role: z.literal("user") }),
@@ -58,35 +69,57 @@ export const getHyperliquidBalanceUsd = async (
       "Unsupported Hyperliquid account role",
     );
     const mode = parse(
-      z.literal("disabled"),
+      z.enum([
+        "disabled",
+        "default",
+        "unifiedAccount",
+        "portfolioMargin",
+        "dexAbstraction",
+      ]),
       await requestInfo({ type: "userAbstraction", user: address }),
-      "Unsupported Hyperliquid account mode",
+      "Unsupported Hyperliquid account mode (unknown or malformed)",
     );
-    const state = await requestInfo({
-      type: "clearinghouseState",
-      user: address,
-      dex: "",
-    });
-    const metadata = await requestInfo({
-      type: "metaAndAssetCtxs",
-      dex: "",
-    });
+    if (mode !== "disabled" && mode !== "unifiedAccount")
+      throw new HyperliquidError(
+        `Unsupported Hyperliquid account mode (${mode})`,
+      );
+    scope =
+      mode === "unifiedAccount" ? "shared USDC" : "primary perpetual equity";
+    let total: number;
+    if (mode === "unifiedAccount") {
+      total = calculateHyperliquidSharedUsdcUsd(
+        await requestInfo({ type: "spotClearinghouseState", user: address }),
+      );
+    } else {
+      const state = await requestInfo({
+        type: "clearinghouseState",
+        user: address,
+        dex: "",
+      });
+      const metadata = await requestInfo({ type: "metaAndAssetCtxs", dex: "" });
+      total = calculateHyperliquidBalanceUsd(state, metadata);
+    }
     // Detect mode changes during the non-atomic multi-request valuation.
     if (
       (await requestInfo({ type: "userAbstraction", user: address })) !== mode
     )
-      throw new Error("Hyperliquid account mode changed during valuation");
-    const total = calculateHyperliquidBalanceUsd(state, metadata);
+      throw new HyperliquidError(
+        "Hyperliquid account mode changed during valuation",
+      );
     logFinance(
       "success",
-      `Hyperliquid wallet ${label} primary perpetual equity is ${formatUsd(total)} USD`,
+      `Hyperliquid wallet ${label} ${scope} is ${formatUsd(total)} USD`,
     );
     return total;
   } catch (error) {
+    const safeError =
+      error instanceof HyperliquidError
+        ? error
+        : new HyperliquidError("Unexpected Hyperliquid valuation failure");
     logFinance(
       "error",
-      `Hyperliquid wallet ${label} primary perpetual equity valuation failed`,
+      `Hyperliquid wallet ${label} ${scope} valuation failed: ${safeError.message}. Previous preview preserved; retry after the wallet price refresh cooldown.`,
     );
-    throw error;
+    throw safeError;
   }
 };

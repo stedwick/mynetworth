@@ -26,7 +26,9 @@ it("displays opted-in Hyperliquid beneath the main balance, excluding it from to
         </tbody>
       </table>,
     );
-    expect(html).toContain(`Hyperliquid primary perp (USD): ${label}`);
+    expect(html).toContain(`Hyperliquid: ${label}`);
+    expect(html).toContain("Standard perps or unified shared USDC");
+    expect(html).not.toContain("Hyperliquid primary perp");
     expect(html).toContain("Excluded from totals");
     expect(html).toContain("text-xs font-normal text-slate-500");
     expect(html).toContain("$100.00<div");

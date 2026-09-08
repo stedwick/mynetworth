@@ -56,40 +56,36 @@ if (process.env.REFRESH_ACTION_TEST_CHILD !== "1") {
     expect(refresh).not.toHaveBeenCalled();
     expect(revalidate).not.toHaveBeenCalled();
   });
-  it.each([0, 2])(
-    "reports partial Hyperliquid failure with shared cooldown (normal failures: %p)",
-    async (failed) => {
+  it("revalidates normal successes without throwing for optional preview failures", async () => {
+    refresh.mockResolvedValue({
+      updated: 1,
+      skipped: 0,
+      failed: 0,
+      hyperliquidFailed: 1,
+    });
+    await expect(refreshAssetPrices(new FormData())).resolves.toBeUndefined();
+    expect(revalidate.mock.calls).toEqual([["/me"]]);
+  });
+  it.each([0, 1])(
+    "preserves normal failure reporting (preview failures: %p)",
+    async (hyperliquidFailed) => {
       refresh.mockResolvedValue({
-        updated: failed ? 0 : 1,
+        updated: 1,
         skipped: 0,
-        failed,
-        hyperliquidFailed: 1,
+        failed: 1,
+        hyperliquidFailed,
       });
-      let message = "";
-      try {
-        await refreshAssetPrices(new FormData());
-      } catch (error) {
-        message = (error as Error).message;
-      }
-      expect(message).toContain(
-        "Could not refresh Hyperliquid for 1 wallet(s)",
-      );
-      expect(message).toContain("Previous Hyperliquid values were preserved");
-      expect(message).toContain("shares the wallet price refresh cooldown");
-      expect(message).not.toContain("try again shortly");
-      expect(message).toContain(
-        failed
-          ? "Also could not refresh 2 asset(s)"
-          : "Other asset prices refreshed normally",
+      await expect(refreshAssetPrices(new FormData())).rejects.toThrow(
+        "Could not refresh 1 asset(s). Previous values were preserved; try again shortly.",
       );
       expect(revalidate.mock.calls).toEqual([["/me"]]);
     },
   );
-  it("preserves normal failure reporting without Hyperliquid failures", async () => {
-    refresh.mockResolvedValue({ updated: 0, skipped: 0, failed: 1 });
+  it("does not swallow unexpected refresh errors", async () => {
+    refresh.mockRejectedValue(new Error("Refresh failed"));
     await expect(refreshAssetPrices(new FormData())).rejects.toThrow(
-      "Could not refresh 1 asset(s). Previous values were preserved; try again shortly.",
+      "Refresh failed",
     );
-    expect(revalidate.mock.calls).toEqual([["/me"]]);
+    expect(revalidate).not.toHaveBeenCalled();
   });
 }
