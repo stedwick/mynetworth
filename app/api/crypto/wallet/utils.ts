@@ -3,6 +3,7 @@ import { z } from "zod";
 import { usdAmountSchema } from "../ankr-utils";
 
 // Solana uses its native RPC separately. Sonic and Monad remain excluded.
+// Ankr rejects Xai as unsupported, which fails the entire multichain request.
 export const ankrWalletBlockchains = [
   "arbitrum",
   "avalanche",
@@ -19,7 +20,6 @@ export const ankrWalletBlockchains = [
   "story_mainnet",
   "taiko",
   "telos",
-  "xai",
   "xlayer",
 ] as const;
 

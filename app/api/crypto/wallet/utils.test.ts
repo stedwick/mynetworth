@@ -71,8 +71,8 @@ describe("parseAnkrWalletBalanceUsd", () => {
     expect(
       parseAnkrWalletBalanceUsd({ ...walletResult("0"), assets: [] }),
     ).toBe(0);
-    expect(ankrWalletBlockchains).toHaveLength(17);
-    for (const excluded of ["solana", "sonic", "monad"]) {
+    expect(ankrWalletBlockchains).toHaveLength(16);
+    for (const excluded of ["solana", "sonic", "monad", "xai"]) {
       expect(ankrWalletBlockchains).not.toContain(excluded);
     }
   });
