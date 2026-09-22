@@ -107,7 +107,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
   });
   afterAll(() => fetchMock.mockRestore());
 
-  it("posts exactly the 17 explicit EVM mainnets and only whitelisted assets", async () => {
+  it("posts exactly the 16 explicit EVM mainnets and only whitelisted assets", async () => {
     fetchMock.mockImplementation(async (_url, init) => {
       expect(JSON.parse(String(init?.body))).toEqual({
         jsonrpc: "2.0",
@@ -131,7 +131,6 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
             "story_mainnet",
             "taiko",
             "telos",
-            "xai",
             "xlayer",
           ],
           onlyWhitelisted: true,
