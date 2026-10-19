@@ -2,6 +2,7 @@ import "server-only";
 
 import { logFinance } from "@/app/lib/finance-log";
 import { formatUsd } from "@/app/lib/networth";
+import { getWalletFailureReason } from "@/app/lib/wallet-failure";
 import { getCryptoPrices } from "@/app/api/crypto/price/service";
 import {
   requestAnkrBtc,
@@ -73,11 +74,12 @@ export const getWalletBalanceUsd = async (
     );
     return balance;
   } catch (error) {
+    const reason = getWalletFailureReason(error);
     logFinance(
       "error",
       solana
-        ? `Could not value ${wallet} using Ankr and Yahoo (SOL only); its saved balance is unchanged.`
-        : `Ankr could not fetch the USD balance for ${wallet}.`,
+        ? `Could not value ${wallet} using Ankr and Yahoo (SOL only): ${reason}; its saved balance is unchanged.`
+        : `Ankr could not fetch the USD balance for ${wallet}: ${reason}.`,
     );
     throw error;
   }

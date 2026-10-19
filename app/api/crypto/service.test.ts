@@ -282,7 +282,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
       expect(financeLog.mock.calls).toEqual([
         [
           "error",
-          "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only); its saved balance is unchanged.",
+          `Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only): ${"error" in payload ? "Ankr RPC error (-32602)" : "result" in payload ? "Invalid Ankr SOL balance" : "Missing Ankr RPC result"}; its saved balance is unchanged.`,
         ],
       ]);
       const stored = {
@@ -329,7 +329,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     expect(financeLog.mock.calls).toEqual([
       [
         "error",
-        "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only); its saved balance is unchanged.",
+        "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only): Ankr HTTP error (503); its saved balance is unchanged.",
       ],
     ]);
   });
@@ -389,7 +389,7 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
       expect(financeLog.mock.calls).toEqual([
         [
           "error",
-          "Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only); its saved balance is unchanged.",
+          `Could not value SOL wallet So1111...1112 using Ankr and Yahoo (SOL only): ${price === "reject" || price === "missing-quote" ? "Unexpected wallet valuation failure" : price === Number.MAX_SAFE_INTEGER ? "Invalid SOL USD valuation" : "Invalid SOL price"}; its saved balance is unchanged.`,
         ],
       ]);
     },
@@ -548,6 +548,97 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
     expect(financeLog).not.toHaveBeenCalled();
   });
 
+  it.each(["network", "rpc"] as const)(
+    "recovers a wallet after a temporary %s failure with one final log",
+    async (failure) => {
+      if (failure === "network") {
+        fetchMock.mockRejectedValueOnce(
+          new Error(`Fetch failed https://rpc.ankr.com/${apiKey}`),
+        );
+      } else {
+        fetchMock.mockResolvedValueOnce(
+          Response.json({
+            jsonrpc: "2.0",
+            id: 1,
+            error: { code: -32603, message: `${apiKey} ${ethAddress}` },
+          }),
+        );
+      }
+      fetchMock.mockResolvedValueOnce(rpcResponse(walletResult));
+      expect(await getWalletBalanceUsd(ethAddress, apiKey)).toBe(123.45);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(financeLog.mock.calls).toEqual([
+        [
+          "success",
+          "Using Ankr API, ETH/EVM wallet 0x3963...Aa49 has a USD balance of $123.45.",
+        ],
+      ]);
+    },
+  );
+
+  it("shares three total attempts across network, HTTP, and RPC failures", async () => {
+    fetchMock.mockRejectedValueOnce(
+      new Error(`https://rpc.ankr.com/${apiKey}`),
+    );
+    fetchMock.mockResolvedValueOnce(new Response(apiKey, { status: 503 }));
+    fetchMock.mockResolvedValueOnce(
+      Response.json({
+        jsonrpc: "2.0",
+        id: 1,
+        error: { code: -32603, message: `${apiKey} ${ethAddress}` },
+      }),
+    );
+    await expect(getWalletBalanceUsd(ethAddress, apiKey)).rejects.toThrow(
+      "Ankr RPC request failed (-32603)",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(financeLog.mock.calls).toEqual([
+      [
+        "error",
+        "Ankr could not fetch the USD balance for ETH/EVM wallet 0x3963...Aa49: Ankr RPC error (-32603).",
+      ],
+    ]);
+  });
+
+  it("bounds persistent internal RPC failures to three attempts", async () => {
+    fetchMock.mockImplementation(async () =>
+      Response.json({
+        jsonrpc: "2.0",
+        id: 1,
+        error: { code: -32603, message: `${apiKey} ${ethAddress}` },
+      }),
+    );
+    await expect(getWalletBalanceUsd(ethAddress, apiKey)).rejects.toThrow(
+      "Ankr RPC request failed (-32603)",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(financeLog).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers after a timeout with a fresh deadline for the next attempt", async () => {
+    const signals: AbortSignal[] = [];
+    const timeout = spyOn(AbortSignal, "timeout").mockImplementation(() => {
+      const controller = new AbortController();
+      if (signals.length === 0) controller.abort();
+      signals.push(controller.signal);
+      return controller.signal;
+    });
+    fetchMock.mockImplementation(async (_url, init) => {
+      init?.signal?.throwIfAborted();
+      return rpcResponse(walletResult);
+    });
+    try {
+      expect(await getWalletBalanceUsd(ethAddress, apiKey)).toBe(123.45);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(signals[0].aborted).toBe(true);
+      expect(signals[1].aborted).toBe(false);
+      expect(financeLog.mock.calls[0][0]).toBe("success");
+      expect(financeLog).toHaveBeenCalledTimes(1);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
   it.each([
     [ethAddress, "ETH/EVM wallet 0x3963...Aa49", true],
     [btcAddress, "BTC wallet 1PuJjn...kkL4", true],
@@ -584,7 +675,10 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
               "success",
               `Using Ankr API, ${wallet} has a USD balance of $123.45.`,
             ]
-          : ["error", `Ankr could not fetch the USD balance for ${wallet}.`],
+          : [
+              "error",
+              `Ankr could not fetch the USD balance for ${wallet}: Ankr HTTP error (503).`,
+            ],
       ]);
     },
   );
@@ -683,28 +777,29 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
       ["error", "Ankr could not fetch the price of USDT."],
       [
         "error",
-        "Ankr could not fetch the USD balance for ETH/EVM wallet 0x3963...Aa49.",
+        "Ankr could not fetch the USD balance for ETH/EVM wallet 0x3963...Aa49: Unexpected Ankr wallet pagination; full balance not verified.",
       ],
     ]);
   });
 
   it("sanitizes network errors and malformed JSON", async () => {
-    fetchMock.mockRejectedValueOnce(
+    fetchMock.mockRejectedValue(
       new Error(`Fetch failed https://rpc.ankr.com/${apiKey}`),
     );
     await expect(getCryptoPrices(["ETH"], apiKey)).rejects.toThrow(
       "Ankr network request failed or timed out",
     );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     fetchMock.mockResolvedValueOnce(
       new Response(`invalid JSON with ${apiKey}`),
     );
     await expect(getCryptoPrices(["ETH"], apiKey)).rejects.toThrow(
       "Invalid Ankr JSON response or response timed out",
     );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
-  it("sets a 15-second timeout and surfaces aborts as sanitized failures", async () => {
+  it("sets a 10-second timeout and surfaces aborts as sanitized failures", async () => {
     const timeout = spyOn(AbortSignal, "timeout").mockReturnValue(
       AbortSignal.abort(),
     );
@@ -716,7 +811,9 @@ if (process.env.ANKR_SERVICE_TEST_CHILD !== "1") {
       await expect(getCryptoPrices(["ETH"], apiKey)).rejects.toThrow(
         "Ankr network request failed or timed out",
       );
-      expect(timeout).toHaveBeenCalledWith(15_000);
+      expect(timeout).toHaveBeenCalledWith(10_000);
+      expect(timeout).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     } finally {
       timeout.mockRestore();
     }
