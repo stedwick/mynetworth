@@ -1,0 +1,4 @@
+scripts:
+  setup: |
+    # Once per Mac, run in Terminal: portless service install --tld dev
+    bun install --frozen-lockfile
